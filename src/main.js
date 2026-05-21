@@ -46,6 +46,16 @@ function irAlMes(fechaDDMMYYYY) {
   goNav(1);
 }
 
+// "04/2026" → "Abril 2026"
+function formatMes(mesStr) {
+  if (!mesStr) return '';
+  const [m, y] = mesStr.split('/');
+  if (!m || !y) return mesStr;
+  const d = new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1);
+  if (isNaN(d)) return mesStr;
+  return d.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+}
+
 function renderAll() {
   renderHome();
   if (curNav === 1) renderMovs();
@@ -217,7 +227,7 @@ function renderTars() {
         ? `<div style="margin-top:8px">
              <div style="display:flex;gap:8px;align-items:center">
                <input type="date" id="fechaPago_${t.id}" style="flex:1;background:var(--bg3);border:.5px solid var(--b2);border-radius:8px;padding:6px 10px;color:var(--t);font-size:12px;outline:none" value="${new Date().toISOString().slice(0,10)}">
-               <button onclick="pagarTarjeta('${t.id}')" style="padding:6px 14px;background:var(--grb);border:.5px solid var(--gr);border-radius:8px;color:var(--gr);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif">💳 Marcar pagada</button>
+               <button onclick="abrirModalPagoTar('${t.id}', ${gastoActual})" style="padding:6px 14px;background:var(--grb);border:.5px solid var(--gr);border-radius:8px;color:var(--gr);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif">💳 Registrar pago</button>
              </div>
            </div>`
         : '';
@@ -241,10 +251,11 @@ function renderTars() {
   const cuotasFuturasHTML = ST.tars.map(t => {
     const allCuotas = ST.txs.filter(tx => tx.esCuota && tx.tipo === 'Gasto' && tx.tarjeta === t.id && tx.cuotaActual && tx.cuotaTotal);
     if (!allCuotas.length) return '';
-    // Deduplicar: si hay múltiples cuotas del mismo producto, quedarse con la más reciente
+    // Deduplicar: si el mismo producto tiene múltiples cuotas registradas, quedarse con la más reciente
+    // Clave incluye descripción para no colapsar compras distintas del mismo monto
     const dedupMap = {};
     for (const tx of allCuotas) {
-      const key = `${Math.round(tx.monto)}|${tx.cuotaTotal}`;
+      const key = `${Math.round(tx.monto)}|${tx.cuotaTotal}|${(tx.descripcion || '').substring(0, 20)}`;
       if (!dedupMap[key] || Number(tx.cuotaActual) > Number(dedupMap[key].cuotaActual)) {
         dedupMap[key] = tx;
       }
@@ -276,28 +287,36 @@ function renderTars() {
       ? '<div class="empty"><div style="font-size:13px">Importá un PDF para ver los resúmenes</div></div>'
       : arr.map(r => {
           const tar = tarById(r.tarjeta);
+          const mesLabel = formatMes(r.mes);
+          // Desglose por responsable buscando txs con este resumenId
+          const txsR = ST.txs.filter(tx => tx.resumenId === r.id && tx.tipo === 'Gasto');
+          const byResp = {};
+          txsR.forEach(tx => { byResp[tx.responsable] = (byResp[tx.responsable] || 0) + tx.monto; });
+          const respDetail = Object.entries(byResp)
+            .map(([rid, monto]) => `${escapeHTML(respById(rid).emoji)} ${escapeHTML(respById(rid).nombre)}: ${fmt(monto)}`)
+            .join(' · ');
+
           if (r.pagado) {
-            const fechaPagoStr = r.fechaPago
-              ? `<span style="font-size:11px;color:var(--t3);margin-left:6px">· pagado ${escapeHTML(r.fechaPago)}</span>`
+            const pagoPorResp = r.pagos
+              ? Object.entries(r.pagos).map(([rid, m]) => `${escapeHTML(respById(rid).nombre)}: ${fmt(m)}`).join(' · ')
               : '';
-            return `<div style="padding:11px 14px;border-bottom:.5px solid var(--b);display:flex;align-items:center;gap:10px">
-              <div style="flex:1">
-                <div style="font-size:13px;font-weight:500">${escapeHTML(tar.nombre)} · ${escapeHTML(r.mes)}</div>
-                <div style="font-size:11px;color:var(--t3)">${r.cantTx} movimientos · ${fmt(r.monto)}</div>
-              </div>
-              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-                <span style="font-size:12px;color:var(--gr);font-weight:600">Pagado ✓${fechaPagoStr}</span>
-                <button onclick="marcarResumenPagado('${r.id}')" style="background:none;border:none;color:var(--t3);font-size:11px;cursor:pointer;padding:0">Desmarcar</button>
+            return `<div style="padding:11px 14px;border-bottom:.5px solid var(--b)">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+                <div>
+                  <div style="font-size:13px;font-weight:500">${escapeHTML(tar.nombre)} · ${escapeHTML(mesLabel)}</div>
+                  <div style="font-size:11px;color:var(--t3);margin-top:2px">${respDetail || r.cantTx + ' mov.'} · ${fmt(r.monto)}</div>
+                  ${pagoPorResp ? `<div style="font-size:11px;color:var(--t3);margin-top:2px">💳 ${pagoPorResp}${r.fechaPago ? ' · ' + escapeHTML(r.fechaPago) : ''}</div>` : ''}
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+                  <span style="font-size:12px;color:var(--gr);font-weight:600">Pagado ✓</span>
+                  <button onclick="marcarResumenPagado('${r.id}')" style="background:none;border:none;color:var(--t3);font-size:11px;cursor:pointer;padding:0">Desmarcar</button>
+                </div>
               </div>
             </div>`;
           }
           return `<div style="padding:11px 14px;border-bottom:.5px solid var(--b)">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-              <div style="flex:1">
-                <div style="font-size:13px;font-weight:500">${escapeHTML(tar.nombre)} · ${escapeHTML(r.mes)}</div>
-                <div style="font-size:11px;color:var(--t3)">${r.cantTx} movimientos · ${fmt(r.monto)}</div>
-              </div>
-            </div>
+            <div style="font-size:13px;font-weight:500;margin-bottom:3px">${escapeHTML(tar.nombre)} · ${escapeHTML(mesLabel)}</div>
+            <div style="font-size:11px;color:var(--t3);margin-bottom:8px">${respDetail || r.cantTx + ' movimientos'} · ${fmt(r.monto)}</div>
             <div style="display:flex;gap:8px;align-items:center">
               <input type="date" id="fecha_pago_${r.id}" style="flex:1;background:var(--bg3);border:.5px solid var(--b2);border-radius:8px;padding:6px 10px;color:var(--t);font-size:12px;outline:none" value="${new Date().toISOString().slice(0,10)}">
               <button onclick="marcarResumenPagado('${r.id}')" style="padding:6px 12px;background:var(--pub);border:.5px solid var(--pu);border-radius:8px;color:var(--pu2);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap">Marcar pagado</button>
@@ -328,21 +347,69 @@ function marcarResumenPagado(resumenId) {
   renderTars();
 }
 
+let _pagoTarActual = null;
+
 function pagarTarjeta(tarId) {
+  // Called from "Desmarcar" button when already paid
   const mesActualKey = `${curMes.getFullYear()}-${String(curMes.getMonth()+1).padStart(2,'0')}`;
   const pagoKey = `${tarId}|${mesActualKey}`;
-  if (ST.pagosTar[pagoKey]) {
-    delete ST.pagosTar[pagoKey];
-    toast('Pago desmarcado', 'ok');
-  } else {
-    const inp = document.getElementById('fechaPago_' + tarId);
-    const isoDate = inp?.value || new Date().toISOString().slice(0, 10);
-    const [y, m, d] = isoDate.split('-');
-    ST.pagosTar[pagoKey] = { fecha: `${d}/${m}/${y}`, tarjeta: tarId };
-    toast('Tarjeta marcada como pagada ✓', 'ok');
-  }
+  delete ST.pagosTar[pagoKey];
   save();
   renderTars();
+  toast('Pago desmarcado', 'ok');
+}
+
+function abrirModalPagoTar(tarId, gastoTotal) {
+  const tar = tarById(tarId);
+  _pagoTarActual = { tarId, gastoTotal };
+  document.getElementById('pagoTarTitle').textContent = `Pago — ${tar.nombre}`;
+  document.getElementById('pagoTarTotal').textContent = fmt(gastoTotal);
+  document.getElementById('pagoTarFecha').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('pagoTarRespInputs').innerHTML = ST.resp.map(r => `
+    <div class="fg">
+      <label class="fl">${escapeHTML(r.emoji + ' ' + r.nombre)}</label>
+      <div class="aw"><span class="ap">$</span>
+        <input type="number" class="fi amt" id="pagoMonto_${r.id}" placeholder="0" inputmode="decimal">
+      </div>
+    </div>`).join('');
+  document.getElementById('modalPagoTar').classList.add('open');
+}
+
+async function confirmarPagoTar() {
+  if (!_pagoTarActual) return;
+  const { tarId, gastoTotal } = _pagoTarActual;
+  const isoDate = document.getElementById('pagoTarFecha').value || new Date().toISOString().slice(0, 10);
+  const [y, m, d] = isoDate.split('-');
+  const fecha = `${d}/${m}/${y}`;
+  const mesActualKey = `${curMes.getFullYear()}-${String(curMes.getMonth()+1).padStart(2,'0')}`;
+  const pagoKey = `${tarId}|${mesActualKey}`;
+  const tar = tarById(tarId);
+
+  const pagos = {};
+  let totalPagado = 0;
+  for (const r of ST.resp) {
+    const monto = parseFloat(document.getElementById('pagoMonto_' + r.id)?.value || '0') || 0;
+    if (monto > 0) {
+      pagos[r.id] = monto;
+      totalPagado += monto;
+      const tx = {
+        id: generateId(), fecha, tipo: 'Gasto',
+        categoria: 'Pago Tarjeta', descripcion: `Pago ${tar.nombre}`,
+        monto, moneda: 'ARS', tipoPago: 'Transferencia',
+        tarjeta: 'N/A', responsable: r.id, comprador: r.nombre,
+        esCuota: false, cuotaActual: '', cuotaTotal: '',
+      };
+      ST.txs.unshift(tx);
+      try { await sendTx(tx); } catch { ST.pend.push(tx); }
+    }
+  }
+
+  ST.pagosTar[pagoKey] = { fecha, tarjeta: tarId, pagos, total: totalPagado };
+  save();
+  renderAll();
+  document.getElementById('modalPagoTar').classList.remove('open');
+  toast(totalPagado > 0 ? `Pago registrado: ${fmt(totalPagado)} ✓` : 'Tarjeta marcada como pagada ✓', 'ok');
+  _pagoTarActual = null;
 }
 
 // ── Goals & Budget screen ─────────────────────────────────────────────────────
@@ -871,7 +938,9 @@ Object.assign(window, {
   abrirModalTar, toggleVenc, guardarTar, borrarTar,
   abrirModalUrl, guardarUrl, doSync,
   setF, setFR,
-  exportCSV, borrarDatos, marcarResumenPagado, pagarTarjeta, subirTodosASheets,
+  exportCSV, borrarDatos, marcarResumenPagado,
+  pagarTarjeta, abrirModalPagoTar, confirmarPagoTar,
+  subirTodosASheets,
   onDragOver, onDragLeave, onDrop, onFileSelect, toggleAll, importarPDF, resetPDF,
   renderAll,
   _tarById: tarById,

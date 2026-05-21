@@ -461,7 +461,7 @@ input[type=number]{-moz-appearance:textfield}
       <div class="fg"><label class="fl">Categoría</label>
         <select class="fs" id="iC">
           <option value="">— Seleccioná —</option>
-          <optgroup label="Gastos"><option>Alimentación</option><option>Supermercado</option><option>Restaurantes</option><option>Transporte</option><option>Combustible</option><option>Salud</option><option>Farmacia</option><option>Servicios</option><option>Internet/Celular</option><option>Luz/Gas/Agua</option><option>Entretenimiento</option><option>Streaming</option><option>Ropa y Calzado</option><option>Tecnología</option><option>Educación</option><option>Mascotas</option><option>Viajes</option><option>Otros gastos</option></optgroup>
+          <optgroup label="Gastos"><option>Alimentación</option><option>Supermercado</option><option>Restaurantes</option><option>Transporte</option><option>Combustible</option><option>Salud</option><option>Farmacia</option><option>Servicios</option><option>Internet/Celular</option><option>Luz/Gas/Agua</option><option>Entretenimiento</option><option>Streaming</option><option>Ropa y Calzado</option><option>Tecnología</option><option>Educación</option><option>Mascotas</option><option>Viajes</option><option>Pago Tarjeta</option><option>Otros gastos</option></optgroup>
           <optgroup label="Ingresos"><option>Sueldo</option><option>Freelance</option><option>Inversiones</option><option>Ventas</option><option>Reintegros</option><option>Otros ingresos</option></optgroup>
         </select>
       </div>
@@ -544,6 +544,26 @@ input[type=number]{-moz-appearance:textfield}
       <p style="font-size:12px;color:var(--t3);line-height:1.6;margin-top:-4px">Extensiones → Apps Script → Implementar → Gestionar implementaciones.</p>
     </div>
     <div class="sfoot"><button class="btn-p" onclick="guardarUrl()">Guardar</button></div>
+  </div>
+</div>
+
+<!-- MODAL PAGO TARJETA -->
+<div class="ov" id="modalPagoTar" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="sheet">
+    <div class="hdl"></div>
+    <div class="stl" id="pagoTarTitle">Registrar pago de tarjeta</div>
+    <div class="sbody">
+      <div style="font-size:13px;color:var(--t2);margin-bottom:4px">Total consumido: <strong id="pagoTarTotal" style="color:var(--t)"></strong></div>
+      <div style="font-size:12px;color:var(--t3);margin-bottom:14px">Ingresá cuánto paga cada uno (puede no sumar el total)</div>
+      <div id="pagoTarRespInputs"></div>
+      <div class="fg">
+        <label class="fl">Fecha de pago</label>
+        <input type="date" class="fi" id="pagoTarFecha">
+      </div>
+    </div>
+    <div class="sfoot">
+      <button class="btn-p" onclick="confirmarPagoTar()">Confirmar pago</button>
+    </div>
   </div>
 </div>
 

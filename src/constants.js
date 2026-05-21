@@ -23,6 +23,7 @@ export const ICOS = {
   'Otros ingresos': '💰',
   'Ventas':         '🏷️',
   'Reintegros':     '↩️',
+  'Pago Tarjeta':   '💳',
 };
 
 export const NECESIDADES = [
