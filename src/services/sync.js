@@ -33,7 +33,7 @@ export function validateUrl(url) {
  * hanging the UI indefinitely.
  */
 export async function sendTx(tx) {
-  if (!validateUrl(ST.url)) return;
+  if (!validateUrl(ST.url)) return false;
 
   const params = new URLSearchParams({
     action:      'addTransaction',
@@ -52,17 +52,11 @@ export async function sendTx(tx) {
     cuotaTotal:  String(tx.cuotaTotal  || ''),
   });
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10_000);
-  try {
-    await fetch(ST.url + '?' + params.toString(), {
-      method: 'GET',
-      mode: 'no-cors',
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timeout);
-  }
+  const res = await fetch(ST.url + '?' + params.toString(), {
+    method: 'GET',
+    signal: AbortSignal.timeout(10_000),
+  });
+  return res.ok;
 }
 
 // ── Upload all local data to Sheets ───────────────────────────────────────────

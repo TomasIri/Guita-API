@@ -536,8 +536,11 @@ async function guardarTx() {
 
   ST.txs.unshift(tx);
   if (ST.url) {
-    try   { await sendTx(tx); toast('Guardado en Sheets ✓', 'ok'); }
-    catch { ST.pend.push(tx); toast('Guardado local'); }
+    try {
+      const ok = await sendTx(tx);
+      if (ok) { toast('Guardado en Sheets ✓', 'ok'); }
+      else     { ST.pend.push(tx); toast('Sin conexión — guardado local', 'warn'); }
+    } catch { ST.pend.push(tx); toast('Sin conexión — guardado local', 'warn'); }
   } else {
     toast('Guardado ✓', 'ok');
   }
