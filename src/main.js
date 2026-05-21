@@ -3,7 +3,7 @@ import { mesStr, txMes } from './utils/date.js';
 import { fmt, fmtMoneda, pct, cv, cvb } from './utils/money.js';
 import { escapeHTML, csvField } from './utils/sanitize.js';
 import { toast } from './utils/toast.js';
-import { sendTx, doSync, pullFromSheets, uploadAllToSheets, abrirModalUrl, guardarUrl } from './services/sync.js';
+import { sendTx, doSync, fullSync, abrirModalUrl, guardarUrl } from './services/sync.js';
 import { generateId } from './utils/id.js';
 import { ICOS, TIPS, NECESIDADES, DESEOS } from './constants.js';
 import {
@@ -433,18 +433,16 @@ function updateStatusUI() {
 }
 
 async function subirTodosASheets() {
-  if (!ST.txs.length) { toast('No hay datos locales para subir', 'warn'); return; }
-  if (!ST.url)        { toast('Configurá la URL de Sheets primero', 'err'); return; }
-
+  if (!ST.url) { toast('Configurá la URL de Sheets primero', 'err'); return; }
   const btn = document.getElementById('uploadAllBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Subiendo 0 / ' + ST.txs.length + '…'; }
-
-  const { sent } = await uploadAllToSheets((done, total) => {
+  if (btn) { btn.disabled = true; btn.textContent = 'Sincronizando…'; }
+  const { pulled, pushed } = await fullSync((done, total) => {
     if (btn) btn.textContent = `Subiendo ${done} / ${total}…`;
   });
-
-  if (btn) { btn.disabled = false; btn.textContent = `☁ Subir ${ST.txs.length} movimientos a Sheets`; }
-  toast(`${sent} movimientos subidos a Sheets ✓`, 'ok');
+  if (btn) { btn.disabled = false; updateStatusUI(); }
+  const parts = [pulled > 0 ? `${pulled} descargados` : '', pushed > 0 ? `${pushed} subidos` : ''].filter(Boolean);
+  toast(parts.length ? parts.join(', ') + ' ✓' : 'Todo al día ✓', 'ok');
+  if (pulled > 0) renderAll();
 }
 
 // ── Transaction modal ─────────────────────────────────────────────────────────
@@ -774,9 +772,14 @@ function init() {
   renderTip();
   renderAll();
   updateStatusUI();
-  // Pull data from Sheets on startup so any device sees the same data.
-  // Falls back silently if the Apps Script doesn't support getTransactions yet.
-  pullFromSheets().then(n => { if (n > 0) { renderAll(); toast(`${n} movimientos sincronizados ✓`, 'ok'); } });
+  // Auto-sync on startup: pull from Sheets + push any local data missing there.
+  fullSync().then(({ pulled, pushed }) => {
+    if (pulled > 0 || pushed > 0) {
+      renderAll();
+      const parts = [pulled > 0 ? `${pulled} descargados` : '', pushed > 0 ? `${pushed} subidos` : ''].filter(Boolean);
+      toast(parts.join(', ') + ' ✓', 'ok');
+    }
+  });
   if (ST.pend.length > 0) doSync();
 }
 

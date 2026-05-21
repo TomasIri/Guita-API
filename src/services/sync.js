@@ -59,111 +59,89 @@ export async function sendTx(tx) {
   return res.ok;
 }
 
-// ── Upload all local data to Sheets ───────────────────────────────────────────
+// ── Full bidirectional sync ───────────────────────────────────────────────────
 
-/**
- * Upload every local transaction to Google Sheets.
- * Used to populate Sheets from a device that has data only in localStorage.
- * Uses regular fetch (not no-cors) so progress can be tracked.
- */
-export async function uploadAllToSheets(onProgress) {
-  if (!validateUrl(ST.url)) return { ok: false, sent: 0 };
-
-  const txs = [...ST.txs].reverse(); // oldest first
-  let sent = 0;
-
-  for (const tx of txs) {
-    const params = new URLSearchParams({
-      action:      'addTransaction',
-      id:          tx.id || '',
-      fecha:       tx.fecha,
-      tipo:        tx.tipo,
-      categoria:   tx.categoria,
-      descripcion: tx.descripcion,
-      monto:       String(tx.monto),
-      moneda:      tx.moneda    || 'ARS',
-      tipoPago:    tx.tipoPago  || '',
-      tarjeta:     tx.tarjeta   || 'N/A',
-      comprador:   tx.comprador || tx.responsable || 'Yo',
-      esCuota:     tx.esCuota ? 'TRUE' : 'FALSE',
-      cuotaActual: String(tx.cuotaActual || ''),
-      cuotaTotal:  String(tx.cuotaTotal  || ''),
-    });
-    try {
-      await fetch(ST.url + '?' + params.toString(), {
-        method: 'GET',
-        signal: AbortSignal.timeout(12_000),
-      });
-      sent++;
-      onProgress?.(sent, txs.length);
-    } catch {
-      // continue with next
-    }
-    // Small delay to avoid overwhelming Apps Script quota
-    await new Promise(r => setTimeout(r, 200));
-  }
-
-  return { ok: true, sent };
+function parseRow(r) {
+  const monto = parseFloat(String(r.Monto || r.monto || '0').replace(',', '.'));
+  if (!monto || monto <= 0) return null;
+  return {
+    id:          r.ID          || r.id          || '',
+    fecha:       r.Fecha       || r.fecha       || '',
+    tipo:        r.Tipo        || r.tipo        || 'Gasto',
+    categoria:   r.Categoria   || r.categoria   || 'Otros gastos',
+    descripcion: r.Descripcion || r.descripcion || '',
+    monto,
+    moneda:      r.Moneda      || r.moneda      || 'ARS',
+    tipoPago:    r.TipoPago    || r.tipoPago    || 'Efectivo',
+    tarjeta:     r.Tarjeta     || r.tarjeta     || 'N/A',
+    responsable: r.Responsable || r.responsable || 'yo',
+    comprador:   r.Comprador   || r.comprador   || 'Yo',
+    esCuota:     r.EsCuota === 'TRUE' || r.esCuota === 'TRUE',
+    cuotaActual: r.CuotaActual || r.cuotaActual || '',
+    cuotaTotal:  r.CuotaTotal  || r.cuotaTotal  || '',
+  };
 }
 
-// ── Pull from Sheets ──────────────────────────────────────────────────────────
-
 /**
- * Fetch all transactions from Google Sheets and merge into local state.
- * Requires the Apps Script to handle action=getTransactions.
- * Returns the number of new transactions imported.
+ * Bidirectional sync with Google Sheets:
+ * 1. Pull remote transactions not in local → merge into local
+ * 2. Push local transactions not in Sheets → upload silently
+ * Returns { pulled, pushed }.
  */
-export async function pullFromSheets() {
-  if (!validateUrl(ST.url)) return 0;
+export async function fullSync(onProgress) {
+  if (!validateUrl(ST.url)) return { pulled: 0, pushed: 0 };
+
   try {
+    // Step 1 — fetch all Sheets data
     const res = await fetch(`${ST.url}?action=getTransactions`, {
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(20_000),
     });
-    if (!res.ok) return 0;
-    const json = await res.json();
-    const rows = json.data ?? json.transactions ?? [];
-    if (!Array.isArray(rows)) return 0;
+    if (!res.ok) return { pulled: 0, pushed: 0 };
+    const json  = await res.json();
+    const rows  = json.data ?? json.transactions ?? [];
+    if (!Array.isArray(rows)) return { pulled: 0, pushed: 0 };
 
-    const existingIds = new Set(ST.txs.map(t => t.id));
-    let count = 0;
+    // Remote IDs (what Sheets already has)
+    const remoteIds  = new Set(rows.map(r => r.ID || r.id).filter(Boolean));
+    const localIds   = new Set(ST.txs.map(t => t.id));
 
+    // Step 2 — pull: add remote txs missing locally
+    let pulled = 0;
     for (const r of rows) {
-      const id = r.id || r.ID;
-      if (!id || existingIds.has(id)) continue;
-      const monto = parseFloat(String(r.monto || r.Monto || '0').replace(',', '.'));
-      if (!monto || monto <= 0) continue;
-      ST.txs.push({
-        id,
-        fecha:       r.fecha       || r.Fecha       || '',
-        tipo:        r.tipo        || r.Tipo        || 'Gasto',
-        categoria:   r.categoria   || r.Categoria   || 'Otros gastos',
-        descripcion: r.descripcion || r.Descripcion || '',
-        monto,
-        moneda:      r.moneda      || r.Moneda      || 'ARS',
-        tipoPago:    r.tipoPago    || r.tipopago    || r['Tipo de Pago'] || 'Efectivo',
-        tarjeta:     r.tarjeta     || r.Tarjeta     || 'N/A',
-        responsable: r.responsable || r.Responsable || 'yo',
-        comprador:   r.comprador   || r.Comprador   || 'Yo',
-        esCuota:     r.esCuota === 'TRUE' || r.EsCuota === 'TRUE',
-        cuotaActual: r.cuotaActual || r.CuotaActual || '',
-        cuotaTotal:  r.cuotaTotal  || r.CuotaTotal  || '',
-      });
-      existingIds.add(id);
-      count++;
+      const id = r.ID || r.id;
+      if (!id || localIds.has(id)) continue;
+      const tx = parseRow(r);
+      if (!tx) continue;
+      ST.txs.push(tx);
+      localIds.add(id);
+      pulled++;
     }
 
-    if (count > 0) {
-      ST.txs.sort((a, b) => {
-        const p = f => { const [d,m,y] = (f||'').split('/').map(Number); return new Date(y,m-1,d) || 0; };
-        return p(b.fecha) - p(a.fecha);
-      });
+    // Step 3 — push: upload local txs missing in Sheets (oldest first)
+    const toUpload = ST.txs.filter(t => t.id && !remoteIds.has(t.id)).reverse();
+    let pushed = 0;
+    for (const tx of toUpload) {
+      try {
+        const ok = await sendTx(tx);
+        if (ok) { pushed++; onProgress?.(pushed, toUpload.length); }
+      } catch { /* continue */ }
+      if (toUpload.length > 1) await new Promise(r => setTimeout(r, 150));
+    }
+
+    if (pulled > 0 || pushed > 0) {
+      const sortDate = f => { const [d,m,y] = (f||'').split('/').map(Number); return new Date(y,m-1,d)||0; };
+      ST.txs.sort((a, b) => sortDate(b.fecha) - sortDate(a.fecha));
       save();
     }
-    return count;
+
+    return { pulled, pushed };
   } catch {
-    return 0;
+    return { pulled: 0, pushed: 0 };
   }
 }
+
+// Keep pullFromSheets as a lightweight alias (used internally)
+export const pullFromSheets = () => fullSync().then(r => r.pulled);
 
 // ── Sync queue ────────────────────────────────────────────────────────────────
 
@@ -171,32 +149,23 @@ export async function doSync() {
   const btn = document.getElementById('syncBtn');
   btn?.classList.add('spin');
 
-  // Pull first (download new data from Sheets to this device)
-  const pulled = await pullFromSheets();
+  const { pulled, pushed } = await fullSync();
 
-  // Then push any pending local transactions
+  // Also flush pending queue
   if (ST.pend.length > 0) {
     const synced = [];
     for (const tx of ST.pend) {
-      try {
-        await sendTx(tx);
-        synced.push(tx.id);
-      } catch {
-        // Retry on next doSync call.
-      }
+      try { const ok = await sendTx(tx); if (ok) synced.push(tx.id); } catch {}
     }
     ST.pend = ST.pend.filter(t => !synced.includes(t.id));
     save();
-    const msg = [
-      pulled > 0 ? `${pulled} descargados` : '',
-      synced.length > 0 ? `${synced.length} enviados` : '',
-    ].filter(Boolean).join(', ');
-    toast(msg ? msg + ' ✓' : 'Sin conexión', msg ? 'ok' : 'warn');
-  } else if (pulled > 0) {
-    toast(`${pulled} movimientos descargados ✓`, 'ok');
-  } else {
-    toast('Todo al día ✓', 'ok');
   }
+
+  const parts = [
+    pulled > 0 ? `${pulled} descargados` : '',
+    pushed > 0 ? `${pushed} subidos`      : '',
+  ].filter(Boolean);
+  toast(parts.length ? parts.join(', ') + ' ✓' : 'Todo al día ✓', 'ok');
 
   btn?.classList.remove('spin');
 }
