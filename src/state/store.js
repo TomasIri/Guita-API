@@ -59,8 +59,9 @@ function loadFromStorage() {
       metas:  JSON.parse(localStorage.getItem('fp_metas') || '[]'),
       pres:   JSON.parse(localStorage.getItem('fp_pres')  || '{}'),
       codes:    JSON.parse(localStorage.getItem('fp_codes')    || '{}'),
-      resumenes:JSON.parse(localStorage.getItem('fp_resumenes') || '{}'),
-      racha:    parseInt(localStorage.getItem('fp_racha')   || '0', 10),
+      resumenes: JSON.parse(localStorage.getItem('fp_resumenes') || '{}'),
+      pagosTar:  JSON.parse(localStorage.getItem('fp_pagostar')  || '{}'),
+      racha:     parseInt(localStorage.getItem('fp_racha')   || '0', 10),
       ultReg:   localStorage.getItem('fp_ultReg') || '',
     };
     if (version < 2) migrateV1(data);
@@ -77,7 +78,7 @@ function emptyState() {
     txs: [], pend: [], url: '',
     resp: structuredClone(DEFAULT_RESP),
     tars: structuredClone(DEFAULT_TARS),
-    metas: [], pres: {}, codes: {}, resumenes: {},
+    metas: [], pres: {}, codes: {}, resumenes: {}, pagosTar: {},
     racha: 0, ultReg: '',
   };
 }
@@ -105,6 +106,7 @@ export function save() {
     localStorage.setItem('fp_racha', String(ST.racha));
     localStorage.setItem('fp_ultReg',   ST.ultReg);
     localStorage.setItem('fp_resumenes', JSON.stringify(ST.resumenes));
+    localStorage.setItem('fp_pagostar',  JSON.stringify(ST.pagosTar));
   } catch (err) {
     console.error('[Guita] Error al guardar en localStorage:', err);
   } finally {

@@ -192,6 +192,8 @@ function renderTars() {
     : new Date(curMes.getFullYear(), curMes.getMonth() + 1, 0).getDate();
   const diasTotal = new Date(curMes.getFullYear(), curMes.getMonth() + 1, 0).getDate();
 
+  const mesActualKey = `${curMes.getFullYear()}-${String(curMes.getMonth()+1).padStart(2,'0')}`;
+
   document.getElementById('tarCard').innerHTML = ST.tars.map(t => {
     const gastoActual    = txM.filter(tx => tx.tipo === 'Gasto' && tx.tarjeta === t.id).reduce((s, tx) => s + tx.monto, 0);
     const cuotasActual   = txM.filter(tx => tx.esCuota && tx.tipo === 'Gasto' && tx.tarjeta === t.id).reduce((s, tx) => s + tx.monto, 0);
@@ -203,17 +205,35 @@ function renderTars() {
     const usadoPct       = limite > 0 ? Math.min(pct(gastoActual, limite), 100) : 0;
     const limiteColor    = usadoPct >= 90 ? 'var(--re)' : usadoPct >= 70 ? 'var(--am)' : 'var(--gr)';
 
+    // Payment status for this card + month
+    const pagoKey   = `${t.id}|${mesActualKey}`;
+    const pago      = ST.pagosTar[pagoKey];
+    const pagoBadge = pago
+      ? `<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:7px 10px;background:var(--grb);border-radius:8px;border:.5px solid var(--gr)">
+           <span style="font-size:12px;color:var(--gr);font-weight:600">✓ Pagada el ${escapeHTML(pago.fecha)}</span>
+           <button onclick="pagarTarjeta('${t.id}')" style="background:none;border:none;color:var(--t3);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif">Desmarcar</button>
+         </div>`
+      : gastoActual > 0
+        ? `<div style="margin-top:8px">
+             <div style="display:flex;gap:8px;align-items:center">
+               <input type="date" id="fechaPago_${t.id}" style="flex:1;background:var(--bg3);border:.5px solid var(--b2);border-radius:8px;padding:6px 10px;color:var(--t);font-size:12px;outline:none" value="${new Date().toISOString().slice(0,10)}">
+               <button onclick="pagarTarjeta('${t.id}')" style="padding:6px 14px;background:var(--grb);border:.5px solid var(--gr);border-radius:8px;color:var(--gr);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif">💳 Marcar pagada</button>
+             </div>
+           </div>`
+        : '';
+
     return `<div class="trow">
       <div class="trow-top">
-        <div class="tleft"><div class="tico">💳</div><div><div class="tname">${escapeHTML(t.nombre)}</div><div class="tvenc">${t.vt === 'fijo' ? 'Vence día ' + t.vd : 'Vencimiento variable'}</div></div></div>
-        <div class="tright"><div class="tcuota">${fmt(gastoActual)}</div><div class="tlabel">consumido</div></div>
+        <div class="tleft"><div class="tico">${pago ? '✅' : '💳'}</div><div><div class="tname">${escapeHTML(t.nombre)}</div><div class="tvenc">${t.vt === 'fijo' ? 'Vence día ' + t.vd : 'Vencimiento variable'}</div></div></div>
+        <div class="tright"><div class="tcuota" style="color:${pago ? 'var(--gr)' : 'var(--pu2)'}">${fmt(gastoActual)}</div><div class="tlabel">${pago ? 'pagada ✓' : 'consumido'}</div></div>
       </div>
       ${limite > 0 ? `<div style="height:3px;background:var(--bg5);border-radius:2px;margin-bottom:8px;overflow:hidden"><div style="height:100%;width:${usadoPct}%;background:${limiteColor};border-radius:2px;transition:width .5s"></div></div>` : ''}
       <div class="trow-proyeccion">
         <div class="tpk"><div class="tpk-l">Cuotas mes</div><div class="tpk-v" style="color:var(--pu2)">${fmt(cuotasActual)}</div></div>
-        <div class="tpk"><div class="tpk-l">Proyec. fin mes</div><div class="tpk-v" style="color:var(--am)">${fmt(proyeccionTotal)}</div></div>
+        <div class="tpk"><div class="tpk-l">Proyec. fin mes</div><div class="tpk-v" style="color:${pago ? 'var(--t3)' : 'var(--am)'}"><s style="${pago ? '' : 'display:none'}">${fmt(proyeccionTotal)}</s>${pago ? '' : fmt(proyeccionTotal)}</div></div>
         <div class="tpk"><div class="tpk-l">${limite > 0 ? 'Disponible' : 'Límite'}</div><div class="tpk-v" style="color:${disponible !== null ? (disponible < limite * .2 ? 'var(--re)' : 'var(--gr)') : 'var(--t3)'}">${disponible !== null ? fmt(disponible) : 'No seteado'}</div></div>
       </div>
+      ${pagoBadge}
     </div>`;
   }).join('') + `<div onclick="abrirModalTar()" style="padding:12px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;color:var(--pu2);font-size:14px;font-weight:500"><div style="width:34px;height:34px;border-radius:8px;background:var(--pub);display:flex;align-items:center;justify-content:center;font-size:18px">+</div>Agregar tarjeta</div>`;
 
@@ -303,6 +323,23 @@ function marcarResumenPagado(resumenId) {
     r.pagado    = true;
     r.fechaPago = `${d}/${m}/${y}`;
     toast('Resumen marcado como pagado ✓', 'ok');
+  }
+  save();
+  renderTars();
+}
+
+function pagarTarjeta(tarId) {
+  const mesActualKey = `${curMes.getFullYear()}-${String(curMes.getMonth()+1).padStart(2,'0')}`;
+  const pagoKey = `${tarId}|${mesActualKey}`;
+  if (ST.pagosTar[pagoKey]) {
+    delete ST.pagosTar[pagoKey];
+    toast('Pago desmarcado', 'ok');
+  } else {
+    const inp = document.getElementById('fechaPago_' + tarId);
+    const isoDate = inp?.value || new Date().toISOString().slice(0, 10);
+    const [y, m, d] = isoDate.split('-');
+    ST.pagosTar[pagoKey] = { fecha: `${d}/${m}/${y}`, tarjeta: tarId };
+    toast('Tarjeta marcada como pagada ✓', 'ok');
   }
   save();
   renderTars();
@@ -834,7 +871,7 @@ Object.assign(window, {
   abrirModalTar, toggleVenc, guardarTar, borrarTar,
   abrirModalUrl, guardarUrl, doSync,
   setF, setFR,
-  exportCSV, borrarDatos, marcarResumenPagado, subirTodosASheets,
+  exportCSV, borrarDatos, marcarResumenPagado, pagarTarjeta, subirTodosASheets,
   onDragOver, onDragLeave, onDrop, onFileSelect, toggleAll, importarPDF, resetPDF,
   renderAll,
   _tarById: tarById,
