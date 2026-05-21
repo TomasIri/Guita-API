@@ -424,9 +424,14 @@ input[type=number]{-moz-appearance:textfield}
         <div class="sitem" onclick="doSync()"><div><div class="silabel">Sincronizar ahora</div><div class="sisub" id="pendSt">0 pendientes</div></div><span style="color:var(--t3)">↻</span></div>
         <div class="sitem" onclick="exportCSV()"><div><div class="silabel">Exportar CSV</div><div class="sisub">Descargá todos tus movimientos</div></div><span style="color:var(--t3)">↓</span></div>
       </div>
+      <div class="slbl" style="margin-top:4px">Subir datos a Sheets</div>
+      <div class="card cp" style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:12px;color:var(--t2);line-height:1.5">Usá este botón <strong style="color:var(--t)">una sola vez</strong> desde el dispositivo donde tenés tus datos para subirlos todos a Google Sheets. Después podrás acceder desde cualquier lado.</div>
+        <button id="uploadAllBtn" onclick="subirTodosASheets()" class="btn-a" style="margin:0">☁ Subir movimientos a Sheets</button>
+      </div>
       <div class="slbl" style="margin-top:4px">Sistema</div>
       <div class="card">
-        <div class="sitem"><div><div class="silabel">Versión</div><div class="sisub">Guita · v2.1</div></div><span style="font-size:11px;padding:3px 8px;background:var(--grb);color:var(--gr);border-radius:5px;font-weight:600">OK</span></div>
+        <div class="sitem"><div><div class="silabel">Versión</div><div class="sisub">Guita · v2.3</div></div><span style="font-size:11px;padding:3px 8px;background:var(--grb);color:var(--gr);border-radius:5px;font-weight:600">OK</span></div>
         <div class="sitem" onclick="borrarDatos()"><div><div class="silabel" style="color:var(--re)">Borrar datos locales</div><div class="sisub">No afecta el Google Sheet</div></div><span style="color:var(--re)">›</span></div>
       </div>
     </div>

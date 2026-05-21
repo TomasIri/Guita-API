@@ -3,7 +3,7 @@ import { mesStr, txMes } from './utils/date.js';
 import { fmt, fmtMoneda, pct, cv, cvb } from './utils/money.js';
 import { escapeHTML, csvField } from './utils/sanitize.js';
 import { toast } from './utils/toast.js';
-import { sendTx, doSync, pullFromSheets, abrirModalUrl, guardarUrl } from './services/sync.js';
+import { sendTx, doSync, pullFromSheets, uploadAllToSheets, abrirModalUrl, guardarUrl } from './services/sync.js';
 import { generateId } from './utils/id.js';
 import { ICOS, TIPS, NECESIDADES, DESEOS } from './constants.js';
 import {
@@ -428,6 +428,23 @@ function updateStatusUI() {
   if (p) p.textContent = ST.pend.length + ' pendientes';
   const d = document.getElementById('pdot');
   if (d) d.style.display = ST.pend.length > 0 ? 'block' : 'none';
+  const uploadBtn = document.getElementById('uploadAllBtn');
+  if (uploadBtn) uploadBtn.textContent = `☁ Subir ${ST.txs.length} movimientos a Sheets`;
+}
+
+async function subirTodosASheets() {
+  if (!ST.txs.length) { toast('No hay datos locales para subir', 'warn'); return; }
+  if (!ST.url)        { toast('Configurá la URL de Sheets primero', 'err'); return; }
+
+  const btn = document.getElementById('uploadAllBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Subiendo 0 / ' + ST.txs.length + '…'; }
+
+  const { sent } = await uploadAllToSheets((done, total) => {
+    if (btn) btn.textContent = `Subiendo ${done} / ${total}…`;
+  });
+
+  if (btn) { btn.disabled = false; btn.textContent = `☁ Subir ${ST.txs.length} movimientos a Sheets`; }
+  toast(`${sent} movimientos subidos a Sheets ✓`, 'ok');
 }
 
 // ── Transaction modal ─────────────────────────────────────────────────────────
@@ -771,7 +788,7 @@ Object.assign(window, {
   abrirModalTar, toggleVenc, guardarTar, borrarTar,
   abrirModalUrl, guardarUrl, doSync,
   setF, setFR,
-  exportCSV, borrarDatos, marcarResumenPagado,
+  exportCSV, borrarDatos, marcarResumenPagado, subirTodosASheets,
   onDragOver, onDragLeave, onDrop, onFileSelect, toggleAll, importarPDF, resetPDF,
   renderAll,
   _tarById: tarById,

@@ -37,6 +37,7 @@ export async function sendTx(tx) {
 
   const params = new URLSearchParams({
     action:      'addTransaction',
+    id:          tx.id || '',
     fecha:       tx.fecha,
     tipo:        tx.tipo,
     categoria:   tx.categoria,
@@ -62,6 +63,53 @@ export async function sendTx(tx) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+// ── Upload all local data to Sheets ───────────────────────────────────────────
+
+/**
+ * Upload every local transaction to Google Sheets.
+ * Used to populate Sheets from a device that has data only in localStorage.
+ * Uses regular fetch (not no-cors) so progress can be tracked.
+ */
+export async function uploadAllToSheets(onProgress) {
+  if (!validateUrl(ST.url)) return { ok: false, sent: 0 };
+
+  const txs = [...ST.txs].reverse(); // oldest first
+  let sent = 0;
+
+  for (const tx of txs) {
+    const params = new URLSearchParams({
+      action:      'addTransaction',
+      id:          tx.id || '',
+      fecha:       tx.fecha,
+      tipo:        tx.tipo,
+      categoria:   tx.categoria,
+      descripcion: tx.descripcion,
+      monto:       String(tx.monto),
+      moneda:      tx.moneda    || 'ARS',
+      tipoPago:    tx.tipoPago  || '',
+      tarjeta:     tx.tarjeta   || 'N/A',
+      comprador:   tx.comprador || tx.responsable || 'Yo',
+      esCuota:     tx.esCuota ? 'TRUE' : 'FALSE',
+      cuotaActual: String(tx.cuotaActual || ''),
+      cuotaTotal:  String(tx.cuotaTotal  || ''),
+    });
+    try {
+      await fetch(ST.url + '?' + params.toString(), {
+        method: 'GET',
+        signal: AbortSignal.timeout(12_000),
+      });
+      sent++;
+      onProgress?.(sent, txs.length);
+    } catch {
+      // continue with next
+    }
+    // Small delay to avoid overwhelming Apps Script quota
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  return { ok: true, sent };
 }
 
 // ── Pull from Sheets ──────────────────────────────────────────────────────────
