@@ -3,7 +3,7 @@ import { mesStr, txMes } from './utils/date.js';
 import { fmt, fmtMoneda, pct, cv, cvb } from './utils/money.js';
 import { escapeHTML, csvField } from './utils/sanitize.js';
 import { toast } from './utils/toast.js';
-import { sendTx, doSync, abrirModalUrl, guardarUrl } from './services/sync.js';
+import { sendTx, doSync, pullFromSheets, abrirModalUrl, guardarUrl } from './services/sync.js';
 import { generateId } from './utils/id.js';
 import { ICOS, TIPS, NECESIDADES, DESEOS } from './constants.js';
 import {
@@ -754,6 +754,9 @@ function init() {
   renderTip();
   renderAll();
   updateStatusUI();
+  // Pull data from Sheets on startup so any device sees the same data.
+  // Falls back silently if the Apps Script doesn't support getTransactions yet.
+  pullFromSheets().then(n => { if (n > 0) { renderAll(); toast(`${n} movimientos sincronizados ✓`, 'ok'); } });
   if (ST.pend.length > 0) doSync();
 }
 
