@@ -894,12 +894,14 @@ function exportCSV() {
 
 function borrarDatos() {
   if (!confirm('¿Borrar todos los datos locales?\nEl Google Sheet NO se modifica.')) return;
-  ['fp_txs', 'fp_pend', 'fp_codes', 'fp_metas', 'fp_pres', 'fp_racha', 'fp_ultReg'].forEach(k => localStorage.removeItem(k));
+  ['fp_txs','fp_pend','fp_codes','fp_metas','fp_pres','fp_racha','fp_ultReg',
+   'fp_resumenes','fp_pagostar','fp_version'].forEach(k => localStorage.removeItem(k));
   ST.txs = []; ST.pend = []; ST.codes = {}; ST.metas = []; ST.pres = {};
+  ST.resumenes = {}; ST.pagosTar = {};
   ST.racha = 0; ST.ultReg = '';
   save();
   renderAll();
-  toast('Datos borrados', 'warn');
+  toast('Datos locales borrados ✓', 'warn');
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────

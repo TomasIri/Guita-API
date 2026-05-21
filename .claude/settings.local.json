@@ -12,7 +12,9 @@
       "Bash(python3 -c \"import sys,json; r=json.load\\(sys.stdin\\)['workflow_runs'][0]; print\\(r['id'], r['logs_url']\\)\")",
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('repo:', d.get\\('full_name'\\)\\); print\\('private:', d.get\\('private'\\)\\)\")",
       "Bash(python3 -c \"import sys,json;r=json.load\\(sys.stdin\\)['workflow_runs'][0];print\\(r['status'],'|',r.get\\('conclusion','pending'\\),'| run#'+str\\(r['run_number']\\)\\)\")",
-      "Bash(python3 -c \"import sys,json;d=json.load\\(sys.stdin\\);print\\(len\\(d['data']\\), 'registros en Sheet'\\)\")"
+      "Bash(python3 -c \"import sys,json;d=json.load\\(sys.stdin\\);print\\(len\\(d['data']\\), 'registros en Sheet'\\)\")",
+      "Bash(python3 -c \"import sys,json;r=json.load\\(sys.stdin\\)['workflow_runs'][0];print\\(r['status'],'|',r.get\\('conclusion','pending'\\)\\)\")",
+      "Bash(python3 -c \"import sys,json;print\\('Sheet:',len\\(json.load\\(sys.stdin\\)['data']\\),'registros'\\)\")"
     ]
   }
 }
