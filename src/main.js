@@ -892,8 +892,19 @@ function exportCSV() {
   toast('CSV descargado ✓', 'ok');
 }
 
-function borrarDatos() {
-  if (!confirm('¿Borrar todos los datos locales?\nEl Google Sheet NO se modifica.')) return;
+async function borrarDatos() {
+  if (!confirm('¿Borrar TODOS los datos?\nSe borra de este dispositivo Y del Google Sheet.')) return;
+
+  toast('Borrando...', 'warn');
+
+  // Clear Google Sheet first
+  if (ST.url) {
+    try {
+      await fetch(`${ST.url}?action=clearAll`, { signal: AbortSignal.timeout(15_000) });
+    } catch { /* continúa aunque falle el Sheet */ }
+  }
+
+  // Clear local storage
   ['fp_txs','fp_pend','fp_codes','fp_metas','fp_pres','fp_racha','fp_ultReg',
    'fp_resumenes','fp_pagostar','fp_version'].forEach(k => localStorage.removeItem(k));
   ST.txs = []; ST.pend = []; ST.codes = {}; ST.metas = []; ST.pres = {};
@@ -901,7 +912,7 @@ function borrarDatos() {
   ST.racha = 0; ST.ultReg = '';
   save();
   renderAll();
-  toast('Datos locales borrados ✓', 'warn');
+  toast('Datos borrados de la app y del Sheet ✓', 'warn');
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
