@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fmt, pct, cv, cvb } from '../src/utils/money.js';
+import { fmt, fmtMoneda, pct, cv, cvb } from '../src/utils/money.js';
 import { escapeHTML, csvField } from '../src/utils/sanitize.js';
 import { mesKey, mesStr, txMes, isoToday, isoYesterday } from '../src/utils/date.js';
 import { generateId } from '../src/utils/id.js';
@@ -22,6 +22,14 @@ describe('pct', () => {
   it('returns 0 when denominator is 0', () => expect(pct(5, 0)).toBe(0));
   it('rounds to nearest integer', () => expect(pct(1, 3)).toBe(33));
   it('returns 100 when equal', () => expect(pct(5, 5)).toBe(100));
+});
+
+describe('fmtMoneda', () => {
+  it('ARS usa el mismo formato que fmt', () => expect(fmtMoneda(1000, 'ARS')).toBe('$1.000'));
+  it('USD muestra prefijo USD', () => expect(fmtMoneda(150, 'USD')).toMatch(/^USD/));
+  it('USD no usa signo $', () => expect(fmtMoneda(150, 'USD')).not.toContain('$'));
+  it('sin moneda defaultea a ARS', () => expect(fmtMoneda(500, undefined)).toBe('$500'));
+  it('maneja null/undefined como 0 en ARS', () => expect(fmtMoneda(null, 'ARS')).toBe('$0'));
 });
 
 describe('cv / cvb', () => {

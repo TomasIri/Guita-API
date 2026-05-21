@@ -5,7 +5,7 @@ import { ST, save, respById } from '../state/store.js';
 import { generateId } from '../utils/id.js';
 import { toast } from '../utils/toast.js';
 import { escapeHTML } from '../utils/sanitize.js';
-import { fmt } from '../utils/money.js';
+import { fmt, fmtMoneda } from '../utils/money.js';
 import { sendTx } from './sync.js';
 import { ICOS } from '../constants.js';
 
@@ -68,8 +68,9 @@ function parsearPDF(txt, tarId) {
   const movs   = [];
   const vistos = new Set();
 
-  const ignorar = /^(total|saldo|subtotal|vencimiento|fecha de|pago m[ií]n|periodo|resumen|tarjeta|cuenta|hola|estimado|haberes|d[ée]bito|cr[ée]dito|su resumen|detalle|cft|tea|pagos realizados|saldo anterior|intereses|impuesto|iva|ley|\*|—|___|p[áa]gina|page|\d+\s*$)/i;
-  const cuotaRE  = /(?:cuota|cta\.?)\s*(\d+)[\s\/]+(\d+)/i;
+  const ignorar = /^(total|saldo|subtotal|vencimiento|fecha de|pago m[ií]n|periodo|resumen|tarjeta|cuenta|hola|estimado|haberes|d[ée]bito|cr[ée]dito|su resumen|detalle|cft|tea|pagos realizados|saldo anterior|intereses|impuesto|iva|ley|\*|—|___|p[áa]gina|page|\d+\s*$|consumos en|moneda extranjera|su l[ií]mite|disponible)/i;
+  const cuotaRE  = /(?:cuota|cta\.?|c\.)\s*0*(\d+)\s*(?:de\s+)?[\/\s]\s*0*(\d+)/i;
+  const usdRE    = /(?:u\$s|usd|us\$)\s*(\d{1,3}(?:\.\d{3})*,\d{2})/i;
   const codPats  = [
     /(?:n[°ú]?\.?\s*op|cod(?:igo)?|ref(?:erencia)?|aut(?:orizaci[oó]n)?)\s*:?\s*([A-Z0-9\-]{4,20})/i,
     /\b([A-Z]{2,4}\d{6,12})\b/,
@@ -94,8 +95,15 @@ function parsearPDF(txt, tarId) {
       if (pat.source.startsWith('^(.{3')) { desc = m[1]; fs = m[2]; ms = m[3]; }
       else                                 { fs   = m[1]; desc = m[2]; ms = m[3]; }
 
-      const monto = parseFloat(ms.replace(/\./g, '').replace(',', '.'));
-      if (isNaN(monto) || monto <= 0 || monto > 5_000_000) break;
+      let monedaDetectada = 'ARS';
+      let montoFinal = parseFloat(ms.replace(/\./g, '').replace(',', '.'));
+      const usdLineMatch = ln.match(usdRE);
+      if (usdLineMatch) {
+        monedaDetectada = 'USD';
+        const usdMonto = parseFloat(usdLineMatch[1].replace(/\./g, '').replace(',', '.'));
+        if (!isNaN(usdMonto) && usdMonto > 0) montoFinal = usdMonto;
+      }
+      if (isNaN(montoFinal) || montoFinal <= 0 || montoFinal > 5_000_000) break;
 
       desc = desc.replace(/\s+/g, ' ').trim();
       if (desc.length < 3) break;
@@ -114,19 +122,26 @@ function parsearPDF(txt, tarId) {
         if (codBanco) break;
       }
 
-      const codigoHash  = generarCodigo(tarId, fecha, monto, desc);
+      const codigoHash  = generarCodigo(tarId, fecha, montoFinal, desc);
       const codigoFinal = codBanco ? `${tarId}|${codBanco}` : codigoHash;
       if (vistos.has(codigoFinal)) break;
       vistos.add(codigoFinal);
 
-      const check = verificarDuplicado(codigoFinal, monto);
+      const check = verificarDuplicado(codigoFinal, montoFinal);
 
-      // Parse installment info and validate it.
+      // Parse installment info — search in matched line and adjacent lines.
       let esCuota = false, ca = '', ct = '';
-      const cm = desc.match(cuotaRE);
-      if (cm) {
-        const parsedCa = parseInt(cm[1], 10);
-        const parsedCt = parseInt(cm[2], 10);
+      let cuotaMatch = desc.match(cuotaRE);
+      if (!cuotaMatch) {
+        for (let k = Math.max(0, i - 1); k <= Math.min(lineas.length - 1, i + 1); k++) {
+          if (k === i) continue;
+          cuotaMatch = lineas[k].match(cuotaRE);
+          if (cuotaMatch) break;
+        }
+      }
+      if (cuotaMatch) {
+        const parsedCa = parseInt(cuotaMatch[1], 10);
+        const parsedCt = parseInt(cuotaMatch[2], 10);
         if (parsedCa > 0 && parsedCt > 0 && parsedCa <= parsedCt) {
           esCuota = true;
           ca      = parsedCa;
@@ -136,8 +151,9 @@ function parsearPDF(txt, tarId) {
       }
 
       movs.push({
-        fecha, desc: desc.substring(0, 55), monto,
+        fecha, desc: desc.substring(0, 55), monto: montoFinal,
         categoria: catAuto(desc),
+        moneda: monedaDetectada,
         esCuota, cuotaActual: ca, cuotaTotal: ct,
         tarjeta: tarId, responsable: 'yo',
         codigoFinal, codBanco,
@@ -175,23 +191,41 @@ function mostrarPreview(movs) {
 
   document.getElementById('prevCnt').textContent = movs.length + ' movimientos detectados';
 
-  // Build rows with escapeHTML on all user-derived text.
+  const CATS = [
+    'Alimentación','Supermercado','Restaurantes','Transporte','Combustible',
+    'Salud','Farmacia','Servicios','Internet/Celular','Luz/Gas/Agua',
+    'Entretenimiento','Streaming','Ropa y Calzado','Tecnología','Educación',
+    'Mascotas','Viajes','Otros gastos','Sueldo','Freelance',
+    'Inversiones','Ventas','Reintegros','Otros ingresos',
+  ];
+
   document.getElementById('prevBody').innerHTML = movs.map((m, i) => {
-    const checked = m.estado !== 'duplicado';
-    const badge   =
+    const checked    = m.estado !== 'duplicado';
+    const badge      =
       m.estado === 'duplicado'   ? '<span class="dup-bdg">Ya importado</span>' :
       m.estado === 'actualizado' ? '<span class="upd-bdg">Actualizado</span>'  :
                                    '<span class="new-bdg">Nuevo</span>';
     const cuotaInfo  = m.esCuota ? ` · c.${m.cuotaActual}/${m.cuotaTotal}` : '';
     const codInfo    = m.codBanco ? ` · #${escapeHTML(m.codBanco)}` : '';
+    const montoStr   = m.moneda === 'USD'
+      ? `<span style="color:var(--bl)">USD ${(m.monto).toLocaleString('es-AR',{maximumFractionDigits:2})}</span>`
+      : `<span style="color:var(--re)">$${Math.round(m.monto).toLocaleString('es-AR')}</span>`;
+    const catSelect  = `<select id="pdfCat${i}" style="font-size:11px;background:var(--bg3);border:.5px solid var(--b2);border-radius:6px;color:var(--t);padding:2px 4px;max-width:120px">
+      ${CATS.map(c => `<option value="${c}"${c === m.categoria ? ' selected' : ''}>${escapeHTML(c)}</option>`).join('')}
+    </select>`;
+    const respSelect = `<select id="pdfResp${i}" style="font-size:11px;background:var(--bg3);border:.5px solid var(--b2);border-radius:6px;color:var(--t);padding:2px 4px;max-width:90px">
+      ${ST.resp.map(r => `<option value="${r.id}"${r.id === m.responsable ? ' selected' : ''}>${escapeHTML(r.nombre)}</option>`).join('')}
+    </select>`;
     return `<tr style="${m.estado === 'duplicado' ? 'opacity:.5' : ''}">
       <td><input type="checkbox" ${checked ? 'checked' : ''} id="chk${i}" data-idx="${i}" style="width:16px;height:16px;cursor:pointer;accent-color:var(--pu)"></td>
       <td style="font-size:11px;color:var(--t2);white-space:nowrap">${escapeHTML(m.fecha)}</td>
       <td>
         <div style="font-size:12px;font-weight:500">${escapeHTML(m.desc)}${badge}</div>
-        <div style="font-size:10px;color:var(--t3)">${escapeHTML(m.categoria)}${cuotaInfo}${codInfo}</div>
+        <div style="font-size:10px;color:var(--t3)">${cuotaInfo}${codInfo}</div>
       </td>
-      <td class="mono" style="color:var(--re)">$${Math.round(m.monto).toLocaleString('es-AR')}</td>
+      <td>${catSelect}</td>
+      <td>${respSelect}</td>
+      <td class="mono" style="white-space:nowrap">${montoStr}</td>
     </tr>`;
   }).join('');
 }
@@ -207,20 +241,29 @@ export function toggleAll() {
 }
 
 export async function importarPDF() {
-  const checks = [...document.querySelectorAll('#prevBody input[type=checkbox]')];
-  const sel    = checks.filter(c => c.checked).map(c => movsPDF[parseInt(c.dataset.idx, 10)]);
-  if (!sel.length) { toast('Seleccioná al menos uno', 'err'); return; }
+  const checks    = [...document.querySelectorAll('#prevBody input[type=checkbox]')];
+  const selChecks = checks.filter(c => c.checked);
+  if (!selChecks.length) { toast('Seleccioná al menos uno', 'err'); return; }
 
   const btn = document.getElementById('importBtn');
   btn.classList.add('loading');
 
+  const currentResumenId = generateId();
   let imp = 0, upd = 0;
-  for (const m of sel) {
+
+  for (const c of selChecks) {
+    const idx  = parseInt(c.dataset.idx, 10);
+    const m    = movsPDF[idx];
+    if (!m) continue;
+
+    const respSel = document.getElementById('pdfResp' + idx)?.value || m.responsable || 'yo';
+    const catSel  = document.getElementById('pdfCat'  + idx)?.value || m.categoria;
+
     if (m.estado === 'actualizado' && m.txExistente) {
-      const idx = ST.txs.findIndex(t => t.id === m.txExistente.id);
-      if (idx >= 0) { ST.txs[idx].monto = m.monto; ST.txs[idx].categoria = m.categoria; }
+      const tidx = ST.txs.findIndex(t => t.id === m.txExistente.id);
+      if (tidx >= 0) { ST.txs[tidx].monto = m.monto; ST.txs[tidx].categoria = catSel; }
       upd++;
-      btn.textContent = `Procesando ${imp + upd}/${sel.length}…`;
+      btn.textContent = `Procesando ${imp + upd}/${selChecks.length}…`;
       continue;
     }
 
@@ -228,17 +271,18 @@ export async function importarPDF() {
       id:          generateId(),
       fecha:       m.fecha,
       tipo:        'Gasto',
-      categoria:   m.categoria,
+      categoria:   catSel,
       descripcion: m.desc,
       monto:       m.monto,
-      moneda:      'ARS',
+      moneda:      m.moneda || 'ARS',
       tipoPago:    'Crédito',
       tarjeta:     m.tarjeta,
-      responsable: m.responsable || 'yo',
-      comprador:   respById(m.responsable || 'yo').nombre,
+      responsable: respSel,
+      comprador:   respById(respSel).nombre,
       esCuota:     m.esCuota,
       cuotaActual: m.cuotaActual,
       cuotaTotal:  m.cuotaTotal,
+      resumenId:   currentResumenId,
     };
 
     ST.txs.unshift(tx);
@@ -246,12 +290,36 @@ export async function importarPDF() {
 
     try { await sendTx(tx); } catch { ST.pend.push(tx); }
     imp++;
-    btn.textContent = `Procesando ${imp + upd}/${sel.length}…`;
+    btn.textContent = `Procesando ${imp + upd}/${selChecks.length}…`;
+  }
+
+  // Register the imported statement in ST.resumenes
+  if (imp > 0) {
+    const primeraFecha = selChecks
+      .map(c => movsPDF[parseInt(c.dataset.idx, 10)]?.fecha)
+      .find(f => f) || '';
+    const montoTotal = selChecks.reduce((sum, c) => {
+      const mov = movsPDF[parseInt(c.dataset.idx, 10)];
+      return (mov && mov.estado !== 'actualizado') ? sum + (mov.monto || 0) : sum;
+    }, 0);
+    ST.resumenes[currentResumenId] = {
+      tarjeta:     document.getElementById('pdfTarj').value,
+      mes:         primeraFecha.substring(3),
+      importadoEn: new Date().toISOString(),
+      pagado:      false,
+      monto:       montoTotal,
+      cantTx:      imp,
+    };
   }
 
   save();
-  // renderAll is called from main.js via the exposed window function.
   window.renderAll?.();
+
+  // Navigate to the month of the imported transactions
+  const primeraFechaTx = selChecks
+    .map(c => movsPDF[parseInt(c.dataset.idx, 10)]?.fecha)
+    .find(f => f);
+  if (primeraFechaTx) window.irAlMes?.(primeraFechaTx);
 
   btn.classList.remove('loading');
   document.getElementById('p2').style.display = 'none';

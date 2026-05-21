@@ -1,6 +1,6 @@
 import { isoToday, isoYesterday } from '../utils/date.js';
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 const DEFAULT_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyGoe0rdQk2qMKOtT7WP3ZX49b_78jJUOhK5Z3zYLOT6_SGZdI3c-BLxd59isKfPTob/exec';
 
@@ -30,6 +30,16 @@ export function migrateV1(data) {
     const [d, m, y] = data.ultReg.split('/');
     data.ultReg = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
   }
+  data.version = 2;
+  return data;
+}
+
+/**
+ * v2 → v3:
+ * - Add `resumenes` field: map of resumenId → imported statement metadata.
+ */
+export function migrateV2(data) {
+  if (!data.resumenes) data.resumenes = {};
   data.version = SCHEMA_VERSION;
   return data;
 }
@@ -48,11 +58,14 @@ function loadFromStorage() {
       tars:   JSON.parse(localStorage.getItem('fp_tars')  || JSON.stringify(DEFAULT_TARS)),
       metas:  JSON.parse(localStorage.getItem('fp_metas') || '[]'),
       pres:   JSON.parse(localStorage.getItem('fp_pres')  || '{}'),
-      codes:  JSON.parse(localStorage.getItem('fp_codes') || '{}'),
-      racha:  parseInt(localStorage.getItem('fp_racha')   || '0', 10),
-      ultReg: localStorage.getItem('fp_ultReg') || '',
+      codes:    JSON.parse(localStorage.getItem('fp_codes')    || '{}'),
+      resumenes:JSON.parse(localStorage.getItem('fp_resumenes') || '{}'),
+      racha:    parseInt(localStorage.getItem('fp_racha')   || '0', 10),
+      ultReg:   localStorage.getItem('fp_ultReg') || '',
     };
-    return version < SCHEMA_VERSION ? migrateV1(data) : data;
+    if (version < 2) migrateV1(data);
+    if (version < 3) migrateV2(data);
+    return data;
   } catch {
     return emptyState();
   }
@@ -64,7 +77,7 @@ function emptyState() {
     txs: [], pend: [], url: '',
     resp: structuredClone(DEFAULT_RESP),
     tars: structuredClone(DEFAULT_TARS),
-    metas: [], pres: {}, codes: {},
+    metas: [], pres: {}, codes: {}, resumenes: {},
     racha: 0, ultReg: '',
   };
 }
@@ -90,7 +103,8 @@ export function save() {
     localStorage.setItem('fp_pres',  JSON.stringify(ST.pres));
     localStorage.setItem('fp_codes', JSON.stringify(ST.codes));
     localStorage.setItem('fp_racha', String(ST.racha));
-    localStorage.setItem('fp_ultReg', ST.ultReg);
+    localStorage.setItem('fp_ultReg',   ST.ultReg);
+    localStorage.setItem('fp_resumenes', JSON.stringify(ST.resumenes));
   } catch (err) {
     console.error('[Guita] Error al guardar en localStorage:', err);
   } finally {

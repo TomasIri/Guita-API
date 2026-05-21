@@ -331,6 +331,8 @@ input[type=number]{-moz-appearance:textfield}
       <div class="card" id="tarCard"></div>
       <div class="slbl" style="margin-top:4px">Cuotas futuras (próx. 3 meses)</div>
       <div class="card" id="cuotasFuturas"></div>
+      <div class="slbl" style="margin-top:4px">Resúmenes importados</div>
+      <div class="card" id="resumenesCard"></div>
     </div>
 
     <!-- METAS Y PRESUPUESTO -->
@@ -391,7 +393,7 @@ input[type=number]{-moz-appearance:textfield}
           <span style="font-size:12px;color:var(--pu2);cursor:pointer" onclick="toggleAll()">Sel. todo / nada</span>
         </div>
         <div class="card" style="overflow:auto;max-height:350px">
-          <table class="ptbl"><thead><tr><th style="width:26px"></th><th>Fecha</th><th>Descripción</th><th>Monto</th></tr></thead>
+          <table class="ptbl"><thead><tr><th style="width:26px"></th><th>Fecha</th><th>Descripción</th><th>Categoría</th><th>Resp.</th><th>Monto</th></tr></thead>
           <tbody id="prevBody"></tbody></table>
         </div>
         <button class="btn-p" id="importBtn" onclick="importarPDF()" style="margin-top:12px">

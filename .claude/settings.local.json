@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /tmp/pw-guita)",
+      "Read(//tmp/**)",
+      "Bash('#s0')",
+      "Bash('#s1')",
+      "Bash('#s4')",
+      "Bash(curl *)",
+      "Bash(gh auth *)",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 -c \"import sys,json; r=json.load\\(sys.stdin\\)['workflow_runs'][0]; print\\(r['id'], r['logs_url']\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('repo:', d.get\\('full_name'\\)\\); print\\('private:', d.get\\('private'\\)\\)\")"
+    ]
+  }
+}

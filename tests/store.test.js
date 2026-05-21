@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 // store.js llama loadFromStorage() al importar. En Node, localStorage no existe
 // pero el try-catch de loadFromStorage captura el ReferenceError y retorna emptyState().
 // Por eso ST tiene los valores default y migrateV1 se puede testear como función pura.
-import { migrateV1, respById, tarById, ST } from '../src/state/store.js';
+import { migrateV1, migrateV2, respById, tarById, ST } from '../src/state/store.js';
 
 // ── migrateV1 ─────────────────────────────────────────────────────────────────
 
@@ -120,5 +120,34 @@ describe('ST (estado inicial en entorno sin localStorage)', () => {
     expect(ST.tars).toHaveLength(4);
     expect(ST.tars.map(t => t.id)).toContain('VISA_GALICIA');
     expect(ST.tars.map(t => t.id)).toContain('NX');
+  });
+
+  it('tiene resumenes vacío por defecto', () => {
+    expect(ST.resumenes).toEqual({});
+  });
+});
+
+// ── migrateV2 ─────────────────────────────────────────────────────────────────
+
+describe('migrateV2', () => {
+  it('agrega resumenes: {} si no existe', () => {
+    const data = { version: 2 };
+    expect(migrateV2(data).resumenes).toEqual({});
+  });
+
+  it('no sobreescribe resumenes existentes', () => {
+    const existing = { id1: { pagado: true } };
+    const data = { version: 2, resumenes: existing };
+    expect(migrateV2(data).resumenes).toBe(existing);
+  });
+
+  it('asigna version = 3 al objeto', () => {
+    const data = { version: 2 };
+    expect(migrateV2(data).version).toBe(3);
+  });
+
+  it('muta y retorna el mismo objeto', () => {
+    const data = { version: 2 };
+    expect(migrateV2(data)).toBe(data);
   });
 });

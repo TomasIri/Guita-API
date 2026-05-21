@@ -1,6 +1,6 @@
 import { ST, save, actualizarRacha, respById, tarById, onSaveCallback } from './state/store.js';
 import { mesStr, txMes } from './utils/date.js';
-import { fmt, pct, cv, cvb } from './utils/money.js';
+import { fmt, fmtMoneda, pct, cv, cvb } from './utils/money.js';
 import { escapeHTML, csvField } from './utils/sanitize.js';
 import { toast } from './utils/toast.js';
 import { sendTx, doSync, abrirModalUrl, guardarUrl } from './services/sync.js';
@@ -34,6 +34,16 @@ function goNav(i) {
 function cambiarMes(d) {
   curMes = new Date(curMes.getFullYear(), curMes.getMonth() + d, 1);
   renderAll();
+}
+
+function irAlMes(fechaDDMMYYYY) {
+  const parts = fechaDDMMYYYY.split('/');
+  if (parts.length < 3) return;
+  const m = parseInt(parts[1], 10) - 1;
+  const y = parseInt(parts[2].length === 2 ? '20' + parts[2] : parts[2], 10);
+  if (isNaN(m) || isNaN(y)) return;
+  curMes = new Date(y, m, 1);
+  goNav(1);
 }
 
 function renderAll() {
@@ -132,8 +142,11 @@ function mkTx(t) {
   const r    = respById(t.responsable || 'yo');
   const rb   = r.id !== 'yo' ? `<span class="bdg" style="background:${cvb(r.color)};color:${cv(r.color)}">${r.emoji} ${escapeHTML(r.nombre)}</span>` : '';
   const cb   = t.esCuota ? `<span class="bdg" style="background:var(--pub);color:var(--pu2)">${t.cuotaActual}/${t.cuotaTotal}</span>` : '';
-  const sign = t.tipo === 'Ingreso' ? '+' : '-';
-  return `<div class="tx"><div class="ti" style="background:${bg}">${ico}</div><div class="tin"><div class="td">${escapeHTML(t.descripcion)}${rb}${cb}</div><div class="tm">${escapeHTML(t.fecha)} · ${escapeHTML(t.categoria)}</div></div><div class="ta ${t.tipo === 'Ingreso' ? 'g' : 'r'}">${sign}${fmt(t.monto)}</div></div>`;
+  const sign        = t.tipo === 'Ingreso' ? '+' : '-';
+  const montoDisplay = t.moneda === 'USD'
+    ? `<span style="color:var(--bl)">USD ${(t.monto ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 2 })}</span>`
+    : `${sign}${fmt(t.monto)}`;
+  return `<div class="tx"><div class="ti" style="background:${bg}">${ico}</div><div class="tin"><div class="td">${escapeHTML(t.descripcion)}${rb}${cb}</div><div class="tm">${escapeHTML(t.fecha)} · ${escapeHTML(t.categoria)}</div></div><div class="ta ${t.tipo === 'Ingreso' ? 'g' : 'r'}">${montoDisplay}</div></div>`;
 }
 
 // ── Movements screen ──────────────────────────────────────────────────────────
@@ -223,6 +236,36 @@ function renderTars() {
     const headerHTML = `<div style="padding:8px 14px 6px;display:flex;align-items:center;gap:10px;border-bottom:.5px solid var(--b)"><div style="flex:1;font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Tarjeta</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;text-align:center;min-width:180px">${mesesLabels.map(l => `<div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.06em">${l}</div>`).join('')}</div></div>`;
     el.innerHTML = headerHTML + cuotasFuturasHTML;
   }
+
+  // Resúmenes importados
+  const resEl = document.getElementById('resumenesCard');
+  if (resEl) {
+    const arr = Object.entries(ST.resumenes)
+      .map(([id, r]) => ({ id, ...r }))
+      .sort((a, b) => new Date(b.importadoEn) - new Date(a.importadoEn));
+    resEl.innerHTML = !arr.length
+      ? '<div class="empty"><div style="font-size:13px">Importá un PDF para ver los resúmenes</div></div>'
+      : arr.map(r => {
+          const tar = tarById(r.tarjeta);
+          const pagBtn = r.pagado
+            ? `<button onclick="marcarResumenPagado('${r.id}')" style="padding:5px 10px;background:var(--grb);border:.5px solid var(--gr);border-radius:8px;color:var(--gr);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif">Pagado ✓</button>`
+            : `<button onclick="marcarResumenPagado('${r.id}')" style="padding:5px 10px;background:var(--pub);border:.5px solid var(--pu);border-radius:8px;color:var(--pu2);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif">Marcar pagado</button>`;
+          return `<div style="padding:11px 14px;border-bottom:.5px solid var(--b);display:flex;align-items:center;gap:10px">
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:500">${escapeHTML(tar.nombre)} · ${escapeHTML(r.mes)}</div>
+              <div style="font-size:11px;color:var(--t3)">${r.cantTx} movimientos · ${fmt(r.monto)}</div>
+            </div>${pagBtn}
+          </div>`;
+        }).join('');
+  }
+}
+
+function marcarResumenPagado(resumenId) {
+  if (!ST.resumenes[resumenId]) return;
+  ST.resumenes[resumenId].pagado = !ST.resumenes[resumenId].pagado;
+  save();
+  renderTars();
+  toast(ST.resumenes[resumenId].pagado ? 'Resumen marcado como pagado ✓' : 'Resumen desmarcado', 'ok');
 }
 
 // ── Goals & Budget screen ─────────────────────────────────────────────────────
@@ -717,7 +760,7 @@ function init() {
 // ── Expose to window for inline onclick handlers ──────────────────────────────
 
 Object.assign(window, {
-  goNav, cambiarMes,
+  goNav, cambiarMes, irAlMes,
   openModalTx, closeTx, setTipo, onPago, setCuota, setRBtn, guardarTx,
   abrirModalMeta, guardarMeta, sumarMeta, borrarMeta,
   abrirModalPres, guardarPres, borrarPres,
@@ -725,7 +768,7 @@ Object.assign(window, {
   abrirModalTar, toggleVenc, guardarTar, borrarTar,
   abrirModalUrl, guardarUrl, doSync,
   setF, setFR,
-  exportCSV, borrarDatos,
+  exportCSV, borrarDatos, marcarResumenPagado,
   onDragOver, onDragLeave, onDrop, onFileSelect, toggleAll, importarPDF, resetPDF,
   renderAll,
   _tarById: tarById,
