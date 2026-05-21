@@ -2,6 +2,8 @@ import { isoToday, isoYesterday } from '../utils/date.js';
 
 const SCHEMA_VERSION = 2;
 
+const DEFAULT_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyGoe0rdQk2qMKOtT7WP3ZX49b_78jJUOhK5Z3zYLOT6_SGZdI3c-BLxd59isKfPTob/exec';
+
 // These defaults are only applied on first run (no localStorage data).
 const DEFAULT_RESP = [
   { id: 'yo',   nombre: 'Yo',   color: 'pu', emoji: '👤' },
@@ -41,7 +43,7 @@ function loadFromStorage() {
       version,
       txs:    JSON.parse(localStorage.getItem('fp_txs')   || '[]'),
       pend:   JSON.parse(localStorage.getItem('fp_pend')  || '[]'),
-      url:    localStorage.getItem('fp_url') || '',
+      url:    localStorage.getItem('fp_url') || DEFAULT_WEBAPP_URL,
       resp:   JSON.parse(localStorage.getItem('fp_resp')  || JSON.stringify(DEFAULT_RESP)),
       tars:   JSON.parse(localStorage.getItem('fp_tars')  || JSON.stringify(DEFAULT_TARS)),
       metas:  JSON.parse(localStorage.getItem('fp_metas') || '[]'),
