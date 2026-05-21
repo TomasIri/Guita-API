@@ -219,10 +219,19 @@ function renderTars() {
 
   const meses3 = [0, 1, 2].map(d => new Date(curMes.getFullYear(), curMes.getMonth() + d + 1, 1));
   const cuotasFuturasHTML = ST.tars.map(t => {
-    const cuotasTx = ST.txs.filter(tx => tx.esCuota && tx.tipo === 'Gasto' && tx.tarjeta === t.id && tx.cuotaActual && tx.cuotaTotal);
-    if (!cuotasTx.length) return '';
+    const allCuotas = ST.txs.filter(tx => tx.esCuota && tx.tipo === 'Gasto' && tx.tarjeta === t.id && tx.cuotaActual && tx.cuotaTotal);
+    if (!allCuotas.length) return '';
+    // Deduplicar: si hay múltiples cuotas del mismo producto, quedarse con la más reciente
+    const dedupMap = {};
+    for (const tx of allCuotas) {
+      const key = `${Math.round(tx.monto)}|${tx.cuotaTotal}`;
+      if (!dedupMap[key] || Number(tx.cuotaActual) > Number(dedupMap[key].cuotaActual)) {
+        dedupMap[key] = tx;
+      }
+    }
+    const cuotasTx = Object.values(dedupMap);
     const filas = meses3.map((m, idx) => {
-      const total = cuotasTx.reduce((s, tx) => (tx.cuotaTotal - tx.cuotaActual >= idx + 1 ? s + tx.monto : s), 0);
+      const total = cuotasTx.reduce((s, tx) => (Number(tx.cuotaTotal) - Number(tx.cuotaActual) >= idx + 1 ? s + tx.monto : s), 0);
       return `<div style="font-size:12px;font-family:'DM Mono',monospace;color:${total > 0 ? 'var(--pu2)' : 'var(--t3)'}">${fmt(total)}</div>`;
     });
     return `<div style="padding:11px 14px;border-bottom:.5px solid var(--b);display:flex;align-items:center;gap:10px"><div style="flex:1;font-size:13px;font-weight:500">${escapeHTML(t.nombre)}</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;text-align:center;min-width:180px">${filas.join('')}</div></div>`;
@@ -247,14 +256,32 @@ function renderTars() {
       ? '<div class="empty"><div style="font-size:13px">Importá un PDF para ver los resúmenes</div></div>'
       : arr.map(r => {
           const tar = tarById(r.tarjeta);
-          const pagBtn = r.pagado
-            ? `<button onclick="marcarResumenPagado('${r.id}')" style="padding:5px 10px;background:var(--grb);border:.5px solid var(--gr);border-radius:8px;color:var(--gr);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif">Pagado ✓</button>`
-            : `<button onclick="marcarResumenPagado('${r.id}')" style="padding:5px 10px;background:var(--pub);border:.5px solid var(--pu);border-radius:8px;color:var(--pu2);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif">Marcar pagado</button>`;
-          return `<div style="padding:11px 14px;border-bottom:.5px solid var(--b);display:flex;align-items:center;gap:10px">
-            <div style="flex:1">
-              <div style="font-size:13px;font-weight:500">${escapeHTML(tar.nombre)} · ${escapeHTML(r.mes)}</div>
-              <div style="font-size:11px;color:var(--t3)">${r.cantTx} movimientos · ${fmt(r.monto)}</div>
-            </div>${pagBtn}
+          if (r.pagado) {
+            const fechaPagoStr = r.fechaPago
+              ? `<span style="font-size:11px;color:var(--t3);margin-left:6px">· pagado ${escapeHTML(r.fechaPago)}</span>`
+              : '';
+            return `<div style="padding:11px 14px;border-bottom:.5px solid var(--b);display:flex;align-items:center;gap:10px">
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:500">${escapeHTML(tar.nombre)} · ${escapeHTML(r.mes)}</div>
+                <div style="font-size:11px;color:var(--t3)">${r.cantTx} movimientos · ${fmt(r.monto)}</div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+                <span style="font-size:12px;color:var(--gr);font-weight:600">Pagado ✓${fechaPagoStr}</span>
+                <button onclick="marcarResumenPagado('${r.id}')" style="background:none;border:none;color:var(--t3);font-size:11px;cursor:pointer;padding:0">Desmarcar</button>
+              </div>
+            </div>`;
+          }
+          return `<div style="padding:11px 14px;border-bottom:.5px solid var(--b)">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:500">${escapeHTML(tar.nombre)} · ${escapeHTML(r.mes)}</div>
+                <div style="font-size:11px;color:var(--t3)">${r.cantTx} movimientos · ${fmt(r.monto)}</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="date" id="fecha_pago_${r.id}" style="flex:1;background:var(--bg3);border:.5px solid var(--b2);border-radius:8px;padding:6px 10px;color:var(--t);font-size:12px;outline:none" value="${new Date().toISOString().slice(0,10)}">
+              <button onclick="marcarResumenPagado('${r.id}')" style="padding:6px 12px;background:var(--pub);border:.5px solid var(--pu);border-radius:8px;color:var(--pu2);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap">Marcar pagado</button>
+            </div>
           </div>`;
         }).join('');
   }
@@ -262,10 +289,23 @@ function renderTars() {
 
 function marcarResumenPagado(resumenId) {
   if (!ST.resumenes[resumenId]) return;
-  ST.resumenes[resumenId].pagado = !ST.resumenes[resumenId].pagado;
+  const r = ST.resumenes[resumenId];
+  if (r.pagado) {
+    // Desmarcar
+    r.pagado    = false;
+    r.fechaPago = '';
+    toast('Resumen desmarcado', 'ok');
+  } else {
+    // Marcar pagado — leer fecha del input si existe
+    const inp = document.getElementById('fecha_pago_' + resumenId);
+    const isoDate = inp?.value || new Date().toISOString().slice(0, 10);
+    const [y, m, d] = isoDate.split('-');
+    r.pagado    = true;
+    r.fechaPago = `${d}/${m}/${y}`;
+    toast('Resumen marcado como pagado ✓', 'ok');
+  }
   save();
   renderTars();
-  toast(ST.resumenes[resumenId].pagado ? 'Resumen marcado como pagado ✓' : 'Resumen desmarcado', 'ok');
 }
 
 // ── Goals & Budget screen ─────────────────────────────────────────────────────
