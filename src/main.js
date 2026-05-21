@@ -475,8 +475,12 @@ async function guardarTx() {
   };
 
   ST.txs.unshift(tx);
-  try   { await sendTx(tx); toast('Guardado en Sheets ✓', 'ok'); }
-  catch { ST.pend.push(tx); toast('Guardado local'); }
+  if (ST.url) {
+    try   { await sendTx(tx); toast('Guardado en Sheets ✓', 'ok'); }
+    catch { ST.pend.push(tx); toast('Guardado local'); }
+  } else {
+    toast('Guardado ✓', 'ok');
+  }
 
   checkAlertaPres(tx);
   save();

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0a0a">
-<title>💰 Finanzas</title>
+<title>💰 Guita</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -40,8 +40,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--t);font-f
 
 /* SCREENS */
 .screens{flex:1;overflow:hidden;position:relative}
-.scr{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding:16px;gap:12px;display:none;flex-direction:column}
+.scr{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:16px;padding-bottom:calc(80px + env(safe-area-inset-bottom));gap:12px;display:none;flex-direction:column}
 .scr.on{display:flex}
+.scr > *{flex-shrink:0}
 .scr::-webkit-scrollbar{display:none}
 
 /* NAV */
@@ -197,7 +198,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--t);font-f
 /* MODAL */
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;display:flex;flex-direction:column;justify-content:flex-end;opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(8px)}
 .ov.open{opacity:1;pointer-events:all}
-.sheet{background:var(--bg2);border-radius:22px 22px 0 0;max-height:94vh;overflow-y:auto;transform:translateY(100%);transition:transform .32s cubic-bezier(.32,.72,0,1)}
+.sheet{background:var(--bg2);border-radius:22px 22px 0 0;max-height:94vh;overflow-y:auto;-webkit-overflow-scrolling:touch;transform:translateY(100%);transition:transform .32s cubic-bezier(.32,.72,0,1)}
 .sheet::-webkit-scrollbar{display:none}
 .ov.open .sheet{transform:translateY(0)}
 .hdl{width:34px;height:4px;background:var(--b2);border-radius:2px;margin:12px auto 16px}
@@ -229,7 +230,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--t);font-f
 .mnav{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:.5px solid var(--b)}
 .mnav button{background:none;border:none;color:var(--t2);font-size:20px;cursor:pointer;padding:3px 10px;border-radius:8px}
 .mnav button:active{background:var(--bg3)}
-.mlabel{font-size:13px;font-weight:500;font-family:'DM Mono',monospace;text-transform:capitalize}
+.mlabel{font-size:13px;font-weight:500;font-family:'DM Mono',monospace}
 
 /* 50-30-20 */
 .regla-row{display:flex;gap:4px;height:8px;border-radius:4px;overflow:hidden;margin:10px 0 6px}
@@ -254,12 +255,15 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--t);font-f
 .cqrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .hidden{display:none!important}
 .empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:32px 16px;color:var(--t3);text-align:center}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
 </style>
 </head>
 <body>
 <div class="app">
   <div class="hdr">
-    <div><div class="htitle">💰 Finanzas</div><div class="hdate" id="hDate"></div></div>
+    <div><div class="htitle">💰 Guita</div><div class="hdate" id="hDate"></div></div>
     <div class="hdr-r">
       <div class="pdot" id="pdot" style="display:none"></div>
       <button class="ibtn" id="syncBtn" onclick="doSync()">↻</button>
@@ -420,7 +424,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--t);font-f
       </div>
       <div class="slbl" style="margin-top:4px">Sistema</div>
       <div class="card">
-        <div class="sitem"><div><div class="silabel">Versión</div><div class="sisub">Guita · v2.0</div></div><span style="font-size:11px;padding:3px 8px;background:var(--grb);color:var(--gr);border-radius:5px;font-weight:600">OK</span></div>
+        <div class="sitem"><div><div class="silabel">Versión</div><div class="sisub">Guita · v2.1</div></div><span style="font-size:11px;padding:3px 8px;background:var(--grb);color:var(--gr);border-radius:5px;font-weight:600">OK</span></div>
         <div class="sitem" onclick="borrarDatos()"><div><div class="silabel" style="color:var(--re)">Borrar datos locales</div><div class="sisub">No afecta el Google Sheet</div></div><span style="color:var(--re)">›</span></div>
       </div>
     </div>
