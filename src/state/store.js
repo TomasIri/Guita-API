@@ -23,7 +23,7 @@ const DEFAULT_TARS = [
  * - Normalize `ultReg` from locale 'DD/M/YYYY' to ISO 'YYYY-MM-DD' so
  *   streak comparisons are locale-independent.
  */
-function migrateV1(data) {
+export function migrateV1(data) {
   if (data.ultReg && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(data.ultReg)) {
     const [d, m, y] = data.ultReg.split('/');
     data.ultReg = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
@@ -78,17 +78,22 @@ let saveHook = null;
 export function onSaveCallback(fn) { saveHook = fn; }
 
 export function save() {
-  localStorage.setItem('fp_version', String(SCHEMA_VERSION));
-  localStorage.setItem('fp_txs',   JSON.stringify(ST.txs.slice(0, 3000)));
-  localStorage.setItem('fp_pend',  JSON.stringify(ST.pend));
-  localStorage.setItem('fp_resp',  JSON.stringify(ST.resp));
-  localStorage.setItem('fp_tars',  JSON.stringify(ST.tars));
-  localStorage.setItem('fp_metas', JSON.stringify(ST.metas));
-  localStorage.setItem('fp_pres',  JSON.stringify(ST.pres));
-  localStorage.setItem('fp_codes', JSON.stringify(ST.codes));
-  localStorage.setItem('fp_racha', String(ST.racha));
-  localStorage.setItem('fp_ultReg', ST.ultReg);
-  saveHook?.();
+  try {
+    localStorage.setItem('fp_version', String(SCHEMA_VERSION));
+    localStorage.setItem('fp_txs',   JSON.stringify(ST.txs.slice(0, 3000)));
+    localStorage.setItem('fp_pend',  JSON.stringify(ST.pend));
+    localStorage.setItem('fp_resp',  JSON.stringify(ST.resp));
+    localStorage.setItem('fp_tars',  JSON.stringify(ST.tars));
+    localStorage.setItem('fp_metas', JSON.stringify(ST.metas));
+    localStorage.setItem('fp_pres',  JSON.stringify(ST.pres));
+    localStorage.setItem('fp_codes', JSON.stringify(ST.codes));
+    localStorage.setItem('fp_racha', String(ST.racha));
+    localStorage.setItem('fp_ultReg', ST.ultReg);
+  } catch (err) {
+    console.error('[Guita] Error al guardar en localStorage:', err);
+  } finally {
+    saveHook?.();
+  }
 }
 
 // ── Streak ────────────────────────────────────────────────────────────────────

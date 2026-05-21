@@ -11,12 +11,13 @@ import { ICOS } from '../constants.js';
 
 // ── Module state ──────────────────────────────────────────────────────────────
 
-let movsPDF = [];
-let allSel  = true;
+let movsPDF    = [];
+let allSel     = true;
+let procesando = false;
 
 // ── Duplicate detection ───────────────────────────────────────────────────────
 
-function generarCodigo(tarjeta, fecha, monto, desc) {
+export function generarCodigo(tarjeta, fecha, monto, desc) {
   const m = Math.round(monto * 100);
   const d = desc.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 15);
   return `${tarjeta}|${fecha}|${m}|${d}`;
@@ -32,7 +33,7 @@ function verificarDuplicado(codigo, monto) {
 
 // ── Auto-categorization ───────────────────────────────────────────────────────
 
-function catAuto(d) {
+export function catAuto(d) {
   const u = d.toUpperCase();
   if (/SUPER|COTO|DISCO|JUMBO|CARREFOUR|DIA\b|VEA|CHANGOMAS|WALMART|MAKRO/.test(u))       return 'Supermercado';
   if (/FARMACIA|FARMA|DROGUERIA|FARMACITY/.test(u))                                         return 'Farmacia';
@@ -276,7 +277,8 @@ export function resetPDF() {
   document.getElementById('dzS').textContent = 'Tocá aquí o arrastrá · solo .pdf';
   const inp = dz.querySelector('input');
   if (inp) inp.value = '';
-  movsPDF = [];
+  movsPDF    = [];
+  procesando = false;
 }
 
 export function onDragOver(e)  { e.preventDefault(); document.getElementById('dz').classList.add('drag'); }
@@ -294,6 +296,9 @@ export function onFileSelect(e) {
 }
 
 async function procesarPDF(file) {
+  if (procesando) { toast('Ya se está procesando un PDF', 'warn'); return; }
+  procesando = true;
+
   const dz = document.getElementById('dz');
   dz.classList.add('loaded');
   document.getElementById('dzI').textContent = '📋';
@@ -344,5 +349,7 @@ async function procesarPDF(file) {
     toast('Error al leer el PDF', 'err');
     document.getElementById('dzS').textContent = 'Error.';
     console.error(err);
+  } finally {
+    procesando = false;
   }
 }

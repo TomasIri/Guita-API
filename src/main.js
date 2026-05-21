@@ -315,7 +315,7 @@ function renderStats() {
     : new Date(curMes.getFullYear(), curMes.getMonth() + 1, 0).getDate();
   const diasTotal = new Date(curMes.getFullYear(), curMes.getMonth() + 1, 0).getDate();
 
-  document.getElementById('stGD').textContent  = fmt(totalGas / diasHoy);
+  document.getElementById('stGD').textContent  = fmt(totalGas / Math.max(1, diasHoy));
   document.getElementById('stCnt').textContent = txM.length;
 
   const maxG = [...gastos].sort((a, b) => b.monto - a.monto)[0];
@@ -323,7 +323,7 @@ function renderStats() {
   document.getElementById('stMaxS').textContent = maxG ? (maxG.descripcion || '').substring(0, 22) : '';
   document.getElementById('stTkt').textContent  = fmt(gastos.length > 0 ? totalGas / gastos.length : 0);
 
-  const proj = (totalGas / diasHoy) * diasTotal;
+  const proj = (totalGas / Math.max(1, diasHoy)) * diasTotal;
   document.getElementById('stProj').textContent  = fmt(proj);
   document.getElementById('stProjS').textContent = `Balance proyectado: ${fmt(totalIng - proj)}`;
 
@@ -610,6 +610,8 @@ function guardarResp() {
 
 function borrarResp(i) {
   if (!confirm('¿Eliminar?')) return;
+  const idEliminar = ST.resp[i].id;
+  ST.txs.forEach(tx => { if (tx.responsable === idEliminar) tx.responsable = 'yo'; });
   ST.resp.splice(i, 1);
   save();
   poblarChipsResp();
@@ -653,6 +655,8 @@ function guardarTar() {
 
 function borrarTar(i) {
   if (!confirm('¿Eliminar?')) return;
+  const idEliminar = ST.tars[i].id;
+  ST.txs.forEach(tx => { if (tx.tarjeta === idEliminar) tx.tarjeta = 'N/A'; });
   ST.tars.splice(i, 1);
   save();
   poblarTarSelect();
