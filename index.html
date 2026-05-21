@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0a">
+<title>💰 Finanzas</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0a0a0a;--bg2:#111;--bg3:#181818;--bg4:#222;--bg5:#2a2a2a;
+  --b:#252525;--b2:#333;--b3:#444;
+  --t:#f0f0f0;--t2:#888;--t3:#555;
+  --pu:#7c6fff;--pu2:#b0a5ff;--pub:rgba(124,111,255,.12);--pub2:rgba(124,111,255,.06);
+  --gr:#3ddc84;--grb:rgba(61,220,132,.1);
+  --re:#ff6b6b;--reb:rgba(255,107,107,.1);
+  --am:#f5a623;--amb:rgba(245,166,35,.1);
+  --bl:#4a9eff;--blb:rgba(74,158,255,.1);
+  --pi:#ff6eb0;--pib:rgba(255,110,176,.1);
+  --cy:#2dd4bf;--cyb:rgba(45,212,191,.1);
+  --r:14px;--r2:10px;--r3:20px
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif}
+.app{display:flex;flex-direction:column;height:100%;max-width:480px;margin:0 auto}
+
+/* HEADER */
+.hdr{padding:max(env(safe-area-inset-top),16px) 18px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:.5px solid var(--b);flex-shrink:0}
+.htitle{font-size:15px;font-weight:600}
+.hdate{font-size:11px;color:var(--t3);font-family:'DM Mono',monospace;margin-top:2px}
+.hdr-r{display:flex;gap:8px;align-items:center}
+.ibtn{width:32px;height:32px;border-radius:50%;border:.5px solid var(--b2);background:transparent;color:var(--t2);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.ibtn:active{transform:scale(.9)}
+.ibtn.spin{animation:spin 1s linear infinite;color:var(--pu)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pdot{width:7px;height:7px;border-radius:50%;background:var(--am);animation:pulse 2s infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* SCREENS */
+.screens{flex:1;overflow:hidden;position:relative}
+.scr{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding:16px;gap:12px;display:none;flex-direction:column}
+.scr.on{display:flex}
+.scr::-webkit-scrollbar{display:none}
+
+/* NAV */
+.nav{display:flex;background:var(--bg2);border-top:.5px solid var(--b);padding:5px 0 max(env(safe-area-inset-bottom),5px);flex-shrink:0}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border:none;background:none;color:var(--t3);cursor:pointer;font-size:8px;font-family:'DM Sans',sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:.06em;transition:color .2s}
+.nb svg{width:20px;height:20px;stroke-width:1.5}
+.nb.on{color:var(--pu)}
+.nb:active{transform:scale(.92)}
+
+/* FAB */
+.fab{position:fixed;bottom:calc(66px + max(env(safe-area-inset-bottom),0px));right:16px;width:52px;height:52px;border-radius:50%;background:var(--pu);border:none;color:#fff;font-size:24px;cursor:pointer;box-shadow:0 4px 20px rgba(124,111,255,.5);display:flex;align-items:center;justify-content:center;z-index:100;transition:transform .15s,opacity .2s}
+.fab:active{transform:scale(.9)}
+.fab.hide{opacity:0;pointer-events:none}
+
+/* CARDS */
+.card{background:var(--bg2);border:.5px solid var(--b);border-radius:var(--r);overflow:hidden}
+.cp{padding:14px}
+.ch{padding:11px 14px 9px;display:flex;align-items:center;justify-content:space-between;border-bottom:.5px solid var(--b)}
+.ct{font-size:10px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.08em}
+.ca{font-size:12px;color:var(--pu2);cursor:pointer;font-weight:500}
+.slbl{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;font-weight:600;padding-bottom:6px}
+
+/* KPIs */
+.krow{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.kpi{background:var(--bg2);border:.5px solid var(--b);border-radius:var(--r);padding:13px 14px}
+.kpi.full{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.kpi.ac{background:var(--pub2);border-color:rgba(124,111,255,.2)}
+.kl{font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;font-weight:500;margin-bottom:5px}
+.kv{font-size:20px;font-weight:600;font-family:'DM Mono',monospace;letter-spacing:-.02em}
+.kv.g{color:var(--gr)}.kv.r{color:var(--re)}.kv.p{color:var(--pu2)}.kv.a{color:var(--am)}
+.ksub{font-size:11px;color:var(--t3);margin-top:3px}
+.kprog{height:3px;background:var(--bg5);border-radius:2px;margin-top:7px;overflow:hidden}
+.kpf{height:100%;border-radius:2px;transition:width .6s}
+.kpf.ok{background:var(--gr)}.kpf.warn{background:var(--am)}.kpf.over{background:var(--re)}
+
+/* TXs */
+.tx{display:flex;align-items:center;padding:10px 14px;gap:10px;border-bottom:.5px solid var(--bg3)}
+.tx:last-child{border-bottom:none}
+.ti{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.tin{flex:1;min-width:0}
+.td{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm{font-size:11px;color:var(--t3);margin-top:1px}
+.ta{font-size:13px;font-weight:600;font-family:'DM Mono',monospace;flex-shrink:0}
+.ta.g{color:var(--gr)}.ta.r{color:var(--re)}
+.bdg{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;margin-left:4px;vertical-align:middle}
+
+/* MONEDITA */
+.monedita-wrap{background:var(--pub2);border:.5px solid rgba(124,111,255,.2);border-radius:var(--r);padding:14px;display:flex;align-items:center;gap:14px}
+.monedita-face{font-size:44px;line-height:1;flex-shrink:0;transition:all .4s}
+.monedita-info{flex:1}
+.monedita-estado{font-size:13px;font-weight:600;color:var(--pu2);margin-bottom:3px}
+.monedita-msg{font-size:12px;color:var(--t2);line-height:1.4}
+.racha-badge{display:inline-flex;align-items:center;gap:4px;background:var(--amb);border:.5px solid var(--am);border-radius:20px;padding:3px 8px;font-size:11px;font-weight:600;color:var(--am);margin-top:6px}
+
+/* METAS */
+.meta-item{padding:12px 14px;border-bottom:.5px solid var(--b)}
+.meta-item:last-child{border-bottom:none}
+.meta-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.meta-name{font-size:13px;font-weight:500}
+.meta-amt{font-size:12px;font-family:'DM Mono',monospace;color:var(--t2)}
+.meta-prog{height:5px;background:var(--bg5);border-radius:3px;overflow:hidden;margin-bottom:4px}
+.meta-pf{height:100%;border-radius:3px;transition:width .6s}
+.meta-sub{display:flex;justify-content:space-between;font-size:11px;color:var(--t3)}
+
+/* PRESUPUESTO */
+.pres-item{padding:11px 14px;border-bottom:.5px solid var(--b);display:flex;align-items:center;gap:10px}
+.pres-item:last-child{border-bottom:none}
+.pres-ico{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;background:var(--pub2)}
+.pres-info{flex:1;min-width:0}
+.pres-name{font-size:13px;font-weight:500}
+.pres-prog{height:3px;background:var(--bg5);border-radius:2px;margin-top:4px;overflow:hidden}
+.pres-pf{height:100%;border-radius:2px;transition:width .5s}
+.pres-amt{text-align:right;flex-shrink:0;min-width:70px}
+.pres-v{font-size:12px;font-weight:600;font-family:'DM Mono',monospace}
+.pres-p{font-size:10px;color:var(--t3);margin-top:2px}
+
+/* TARJETAS */
+.trow{padding:13px 14px;border-bottom:.5px solid var(--b)}
+.trow:last-child{border-bottom:none}
+.trow-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.tleft{display:flex;align-items:center;gap:10px}
+.tico{width:34px;height:34px;border-radius:8px;background:var(--pub2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.tname{font-size:14px;font-weight:500}
+.tvenc{font-size:11px;color:var(--t3);margin-top:1px}
+.tright{text-align:right}
+.tcuota{font-size:15px;font-family:'DM Mono',monospace;font-weight:600;color:var(--pu2)}
+.tlabel{font-size:10px;color:var(--t3);margin-top:1px}
+.trow-proyeccion{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;background:var(--bg3);border-radius:8px;padding:9px 10px}
+.tpk{text-align:center}
+.tpk-l{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:3px}
+.tpk-v{font-size:13px;font-weight:600;font-family:'DM Mono',monospace}
+
+/* STATS */
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.scard{background:var(--bg2);border:.5px solid var(--b);border-radius:var(--r);padding:13px 14px}
+.scard.full{grid-column:1/-1}
+.slv{font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;font-weight:500;margin-bottom:5px}
+.sv{font-size:19px;font-weight:600;font-family:'DM Mono',monospace;letter-spacing:-.02em}
+.ssub{font-size:11px;color:var(--t3);margin-top:3px}
+
+/* CAT BARS */
+.cbar{display:flex;align-items:center;padding:10px 14px;gap:10px;border-bottom:.5px solid var(--b)}
+.cbar:last-child{border-bottom:none}
+.cico{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;background:var(--pub2)}
+.cinfo{flex:1;min-width:0}
+.cname{font-size:13px;font-weight:500}
+.cprog{height:3px;background:var(--bg5);border-radius:2px;margin-top:4px;overflow:hidden}
+.cpf{height:100%;border-radius:2px;background:var(--pu);transition:width .6s}
+.camt{text-align:right;flex-shrink:0}
+.camtv{font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--t2)}
+.cpct{font-size:10px;color:var(--t3);margin-top:2px}
+
+/* RESP */
+.rcrd{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:.5px solid var(--b)}
+.rcrd:last-child{border-bottom:none}
+.rav{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.rinfo{flex:1}.rname{font-size:14px;font-weight:500}.ramt{font-size:13px;font-family:'DM Mono',monospace;font-weight:600;color:var(--re)}.rpct{font-size:11px;color:var(--t3)}
+
+/* PDF */
+.dz{border:1.5px dashed var(--b2);border-radius:var(--r);padding:28px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg3);position:relative}
+.dz.drag{border-color:var(--pu);background:var(--pub2)}
+.dz.loaded{border-color:var(--gr);background:var(--grb)}
+.dz input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.ptbl{width:100%;font-size:12px;border-collapse:collapse}
+.ptbl th{font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;font-weight:600;padding:7px 8px;text-align:left;border-bottom:.5px solid var(--b)}
+.ptbl td{padding:7px 8px;border-bottom:.5px solid var(--bg3);color:var(--t);vertical-align:middle}
+.ptbl tr:last-child td{border-bottom:none}
+.mono{font-family:'DM Mono',monospace;font-weight:500;white-space:nowrap}
+.dup-bdg{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:var(--amb);color:var(--am);margin-left:4px;vertical-align:middle}
+.new-bdg{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:var(--grb);color:var(--gr);margin-left:4px;vertical-align:middle}
+.upd-bdg{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:var(--blb);color:var(--bl);margin-left:4px;vertical-align:middle}
+
+/* FORMS */
+.fg{margin-bottom:12px}
+.fl{font-size:10px;color:var(--t2);font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;display:block}
+.fi,.fs{width:100%;background:var(--bg3);border:.5px solid var(--b2);border-radius:var(--r2);padding:11px 13px;color:var(--t);font-size:15px;font-family:'DM Sans',sans-serif;outline:none;transition:border .2s;appearance:none}
+.fi:focus,.fs:focus{border-color:var(--pu)}
+.fi.amt{font-size:20px;font-family:'DM Mono',monospace;font-weight:600;text-align:right;padding-left:28px}
+.fi::placeholder{color:var(--t3)}
+.aw{position:relative}
+.ap{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--t3);font-family:'DM Mono',monospace;pointer-events:none}
+.tr{display:flex;gap:7px;flex-wrap:wrap}
+.tb{padding:9px 12px;border-radius:var(--r2);border:.5px solid var(--b2);background:var(--bg3);color:var(--t2);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap}
+.tb:active{transform:scale(.96)}
+.tb.sel-gas{background:var(--reb);border-color:var(--re);color:var(--re)}
+.tb.sel-ing{background:var(--grb);border-color:var(--gr);color:var(--gr)}
+.tb.sel-pu{background:var(--pub);border-color:var(--pu);color:var(--pu2)}
+.tb.sel-am{background:var(--amb);border-color:var(--am);color:var(--am)}
+.tb.sel-bl{background:var(--blb);border-color:var(--bl);color:var(--bl)}
+.tb.sel-pi{background:var(--pib);border-color:var(--pi);color:var(--pi)}
+.tb.sel-cy{background:var(--cyb);border-color:var(--cy);color:var(--cy)}
+
+/* MODAL */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;display:flex;flex-direction:column;justify-content:flex-end;opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(8px)}
+.ov.open{opacity:1;pointer-events:all}
+.sheet{background:var(--bg2);border-radius:22px 22px 0 0;max-height:94vh;overflow-y:auto;transform:translateY(100%);transition:transform .32s cubic-bezier(.32,.72,0,1)}
+.sheet::-webkit-scrollbar{display:none}
+.ov.open .sheet{transform:translateY(0)}
+.hdl{width:34px;height:4px;background:var(--b2);border-radius:2px;margin:12px auto 16px}
+.stl{font-size:17px;font-weight:600;padding:0 18px;margin-bottom:16px}
+.sbody{padding:0 18px}
+.sfoot{padding:12px 18px max(env(safe-area-inset-bottom),16px)}
+.btn-p{width:100%;padding:14px;background:var(--pu);border:none;border-radius:var(--r3);color:#fff;font-size:15px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:opacity .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-p:active{opacity:.85}
+.btn-p.loading{opacity:.6;pointer-events:none}
+.btn-s{width:100%;padding:12px;background:transparent;border:.5px solid var(--b2);border-radius:var(--r2);color:var(--t2);font-size:14px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;margin-top:8px;transition:all .15s}
+.btn-a{width:100%;padding:12px;background:var(--pub);border:.5px solid rgba(124,111,255,.3);border-radius:var(--r2);color:var(--pu2);font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:opacity .15s}
+.btn-a:active{opacity:.8}
+
+/* TOAST */
+.toast{position:fixed;top:max(env(safe-area-inset-top),14px);left:50%;transform:translateX(-50%) translateY(-70px);background:var(--bg3);border:.5px solid var(--b2);border-radius:var(--r3);padding:10px 18px;font-size:13px;font-weight:500;z-index:500;transition:transform .3s cubic-bezier(.32,.72,0,1);white-space:nowrap;pointer-events:none;max-width:92vw;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.ok{border-color:var(--gr);color:var(--gr)}
+.toast.err{border-color:var(--re);color:var(--re)}
+.toast.warn{border-color:var(--am);color:var(--am)}
+
+/* CHIPS / FILTERS */
+.chips{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{padding:6px 12px;border-radius:20px;border:.5px solid var(--b2);background:var(--bg3);color:var(--t2);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.chip.on{background:var(--pub);border-color:var(--pu);color:var(--pu2)}
+.chip:active{transform:scale(.96)}
+
+/* MONTH NAV */
+.mnav{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:.5px solid var(--b)}
+.mnav button{background:none;border:none;color:var(--t2);font-size:20px;cursor:pointer;padding:3px 10px;border-radius:8px}
+.mnav button:active{background:var(--bg3)}
+.mlabel{font-size:13px;font-weight:500;font-family:'DM Mono',monospace;text-transform:capitalize}
+
+/* 50-30-20 */
+.regla-row{display:flex;gap:4px;height:8px;border-radius:4px;overflow:hidden;margin:10px 0 6px}
+.regla-seg{height:100%;transition:width .6s}
+.regla-legend{display:flex;gap:12px;flex-wrap:wrap}
+.regla-dot{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2)}
+.regla-circ{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* TIP CARD */
+.tip-card{background:var(--bg3);border:.5px solid var(--b2);border-radius:var(--r);padding:12px 14px;display:flex;gap:10px;align-items:flex-start}
+.tip-icon{font-size:22px;flex-shrink:0;margin-top:1px}
+.tip-text{font-size:12px;color:var(--t2);line-height:1.5}
+.tip-text strong{color:var(--t);display:block;margin-bottom:2px;font-size:13px}
+
+/* CONFIG */
+.sitem{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;border-bottom:.5px solid var(--b);cursor:pointer}
+.sitem:last-child{border-bottom:none}
+.sitem:active{background:var(--bg3)}
+.silabel{font-size:14px;font-weight:500}
+.sisub{font-size:12px;color:var(--t3);margin-top:2px}
+
+.cqrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hidden{display:none!important}
+.empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:32px 16px;color:var(--t3);text-align:center}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="hdr">
+    <div><div class="htitle">💰 Finanzas</div><div class="hdate" id="hDate"></div></div>
+    <div class="hdr-r">
+      <div class="pdot" id="pdot" style="display:none"></div>
+      <button class="ibtn" id="syncBtn" onclick="doSync()">↻</button>
+      <button class="ibtn" onclick="goNav(6)">⚙</button>
+    </div>
+  </div>
+
+  <div class="screens">
+
+    <!-- HOME -->
+    <div class="scr on" id="s0">
+      <div class="monedita-wrap" id="moneditaWrap">
+        <div class="monedita-face" id="moneditaFace">🙂</div>
+        <div class="monedita-info">
+          <div class="monedita-estado" id="moneditaEstado">Cargando...</div>
+          <div class="monedita-msg" id="moneditaMsg">Registrá tus movimientos para empezar.</div>
+          <div class="racha-badge" id="rachaBadge">🔥 <span id="rachaNum">0</span> días seguidos</div>
+        </div>
+      </div>
+
+      <div class="tip-card" id="tipCard">
+        <div class="tip-icon" id="tipIcon">💡</div>
+        <div class="tip-text"><strong id="tipTitulo"></strong><span id="tipTexto"></span></div>
+      </div>
+
+      <div class="card">
+        <div class="mnav">
+          <button onclick="cambiarMes(-1)">‹</button>
+          <span class="mlabel" id="mesLabel"></span>
+          <button onclick="cambiarMes(1)">›</button>
+        </div>
+      </div>
+
+      <div class="krow">
+        <div class="kpi"><div class="kl">Ingresos</div><div class="kv g" id="kI">$0</div><div class="ksub" id="kIsub"></div></div>
+        <div class="kpi"><div class="kl">Gastos</div><div class="kv r" id="kG">$0</div><div class="ksub" id="kGsub"></div></div>
+        <div class="kpi full ac">
+          <div><div class="kl">Balance neto</div><div class="kv p" id="kB">$0</div><div class="ksub" id="kBsub"></div></div>
+          <div style="text-align:right;min-width:100px">
+            <div class="kl">Tasa ahorro</div>
+            <div class="kv p" id="kA">0%</div>
+            <div class="ksub">meta 25%</div>
+            <div class="kprog" style="margin-top:5px"><div class="kpf" id="kApf"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card"><div class="ch"><span class="ct">Responsables</span><span class="ca" onclick="goNav(4)">Stats →</span></div><div id="homeResp"></div></div>
+      <div class="card"><div class="ch"><span class="ct">Últimos movimientos</span><span class="ca" onclick="goNav(1)">Ver todo →</span></div><div id="lastTx"></div></div>
+      <div class="card"><div class="ch"><span class="ct">Tarjetas · proyección</span><span class="ca" onclick="goNav(2)">Detalle →</span></div><div id="homeCuotas"></div></div>
+    </div>
+
+    <!-- MOVIMIENTOS -->
+    <div class="scr" id="s1">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="chips" id="fChips"><div class="chip on" onclick="setF('todos',this)">Todos</div><div class="chip" onclick="setF('Gasto',this)">Gastos</div><div class="chip" onclick="setF('Ingreso',this)">Ingresos</div></div>
+        <div class="chips" id="rChips"></div>
+      </div>
+      <div class="card"><div id="allTx"></div></div>
+    </div>
+
+    <!-- TARJETAS -->
+    <div class="scr" id="s2">
+      <div class="slbl">Resumen y proyección</div>
+      <div class="card" id="tarCard"></div>
+      <div class="slbl" style="margin-top:4px">Cuotas futuras (próx. 3 meses)</div>
+      <div class="card" id="cuotasFuturas"></div>
+    </div>
+
+    <!-- METAS Y PRESUPUESTO -->
+    <div class="scr" id="s3">
+      <div class="slbl">Metas de ahorro</div>
+      <div class="card" id="metasCard"></div>
+      <button class="btn-a" onclick="abrirModalMeta()">+ Nueva meta</button>
+      <div class="slbl" style="margin-top:4px">Presupuesto por categoría</div>
+      <div class="card" id="presCard"></div>
+      <button class="btn-a" onclick="abrirModalPres()">+ Establecer presupuesto</button>
+      <div class="slbl" style="margin-top:4px">Regla 50 / 30 / 20</div>
+      <div class="card cp" id="regla5030"></div>
+    </div>
+
+    <!-- ESTADÍSTICAS -->
+    <div class="scr" id="s4">
+      <div class="slbl">Resumen del mes</div>
+      <div class="sgrid">
+        <div class="scard"><div class="slv">Gasto diario</div><div class="sv r" id="stGD">$0</div><div class="ssub">promedio</div></div>
+        <div class="scard"><div class="slv">Transacciones</div><div class="sv p" id="stCnt">0</div><div class="ssub">este mes</div></div>
+        <div class="scard"><div class="slv">Mayor gasto</div><div class="sv r" id="stMax">$0</div><div class="ssub" id="stMaxS"></div></div>
+        <div class="scard"><div class="slv">Ticket promedio</div><div class="sv" id="stTkt">$0</div><div class="ssub">por gasto</div></div>
+        <div class="scard full"><div class="slv">Proyección fin de mes</div><div class="sv p" id="stProj">$0</div><div class="ssub" id="stProjS"></div></div>
+      </div>
+      <div class="slbl" style="margin-top:4px">Por categoría</div>
+      <div class="card"><div id="catBars"></div></div>
+      <div class="slbl" style="margin-top:4px">Por responsable</div>
+      <div class="card"><div id="respStats"></div></div>
+      <div class="slbl" style="margin-top:4px">Últimos 3 meses</div>
+      <div class="card cp"><div id="trend3m"></div></div>
+    </div>
+
+    <!-- PDF -->
+    <div class="scr" id="s5">
+      <div class="slbl">Importar resumen PDF</div>
+      <div id="p1">
+        <div class="card cp" style="display:flex;flex-direction:column;gap:12px">
+          <div class="fg" style="margin:0"><label class="fl">Tarjeta</label><select class="fs" id="pdfTarj"></select></div>
+          <div class="fg" style="margin:0"><label class="fl">Archivo PDF</label>
+            <div class="dz" id="dz" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+              <input type="file" accept=".pdf" onchange="onFileSelect(event)">
+              <div style="font-size:32px;margin-bottom:8px" id="dzI">📄</div>
+              <div style="font-size:14px;font-weight:500;margin-bottom:4px" id="dzT">Seleccioná el PDF</div>
+              <div style="font-size:12px;color:var(--t2)" id="dzS">Tocá aquí o arrastrá · solo .pdf</div>
+            </div>
+          </div>
+        </div>
+        <div class="card cp hidden" id="progW">
+          <div style="font-size:13px;font-weight:500;margin-bottom:10px" id="progT">Leyendo PDF...</div>
+          <div style="height:4px;background:var(--bg5);border-radius:2px;overflow:hidden;margin-bottom:8px"><div style="height:100%;background:var(--pu);border-radius:2px;transition:width .3s;width:0%" id="progB"></div></div>
+          <div style="font-size:12px;color:var(--t2)" id="progS"></div>
+        </div>
+      </div>
+      <div id="p2" style="display:none">
+        <div class="card cp" id="pdfSummary" style="margin-bottom:0"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;margin-bottom:8px">
+          <div class="slbl" style="padding:0" id="prevCnt"></div>
+          <span style="font-size:12px;color:var(--pu2);cursor:pointer" onclick="toggleAll()">Sel. todo / nada</span>
+        </div>
+        <div class="card" style="overflow:auto;max-height:350px">
+          <table class="ptbl"><thead><tr><th style="width:26px"></th><th>Fecha</th><th>Descripción</th><th>Monto</th></tr></thead>
+          <tbody id="prevBody"></tbody></table>
+        </div>
+        <button class="btn-p" id="importBtn" onclick="importarPDF()" style="margin-top:12px">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l5 5L20 7"/></svg>
+          Importar seleccionados
+        </button>
+        <button class="btn-s" onclick="resetPDF()">Cargar otro PDF</button>
+      </div>
+      <div class="card cp hidden" id="p3" style="text-align:center">
+        <div style="font-size:38px;font-weight:600;font-family:'DM Mono',monospace;color:var(--gr)" id="r3n">0</div>
+        <div style="font-size:13px;color:var(--t2);margin-top:6px" id="r3l"></div>
+        <div style="font-size:12px;color:var(--t3);margin-top:4px" id="r3d"></div>
+        <button class="btn-a" onclick="resetPDF()" style="margin-top:14px">Importar otro resumen</button>
+      </div>
+    </div>
+
+    <!-- CONFIG -->
+    <div class="scr" id="s6">
+      <div class="slbl">Responsables</div>
+      <div class="card" id="respCfg"></div>
+      <button class="btn-a" onclick="abrirModalResp()">+ Agregar responsable</button>
+      <div class="slbl" style="margin-top:4px">Tarjetas</div>
+      <div class="card" id="tarCfg"></div>
+      <button class="btn-a" onclick="abrirModalTar()">+ Agregar tarjeta</button>
+      <div class="slbl" style="margin-top:4px">Conexión</div>
+      <div class="card">
+        <div class="sitem" onclick="abrirModalUrl()"><div><div class="silabel">URL Web App</div><div class="sisub" id="urlSt">Sin configurar</div></div><span style="color:var(--t3)">›</span></div>
+        <div class="sitem" onclick="doSync()"><div><div class="silabel">Sincronizar ahora</div><div class="sisub" id="pendSt">0 pendientes</div></div><span style="color:var(--t3)">↻</span></div>
+        <div class="sitem" onclick="exportCSV()"><div><div class="silabel">Exportar CSV</div><div class="sisub">Descargá todos tus movimientos</div></div><span style="color:var(--t3)">↓</span></div>
+      </div>
+      <div class="slbl" style="margin-top:4px">Sistema</div>
+      <div class="card">
+        <div class="sitem"><div><div class="silabel">Versión</div><div class="sisub">Guita · v2.0</div></div><span style="font-size:11px;padding:3px 8px;background:var(--grb);color:var(--gr);border-radius:5px;font-weight:600">OK</span></div>
+        <div class="sitem" onclick="borrarDatos()"><div><div class="silabel" style="color:var(--re)">Borrar datos locales</div><div class="sisub">No afecta el Google Sheet</div></div><span style="color:var(--re)">›</span></div>
+      </div>
+    </div>
+
+  </div><!-- /screens -->
+
+  <nav class="nav">
+    <button class="nb on" id="n0" onclick="goNav(0)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12L12 3l9 9M5 10v9a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1v-9"/></svg>Inicio</button>
+    <button class="nb" id="n1" onclick="goNav(1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Movimientos</button>
+    <button class="nb" id="n2" onclick="goNav(2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>Tarjetas</button>
+    <button class="nb" id="n3" onclick="goNav(3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2l3 6.5L22 9.5l-5 4.9 1.2 7-6.2-3.3L5.8 21.4 7 14.4 2 9.5l7-.9z"/></svg>Metas</button>
+    <button class="nb" id="n4" onclick="goNav(4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Stats</button>
+    <button class="nb" id="n5" onclick="goNav(5)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>PDF</button>
+  </nav>
+</div>
+
+<button class="fab" id="fab" onclick="openModalTx()">+</button>
+
+<!-- MODAL TX -->
+<div class="ov" id="modalTx" onclick="if(event.target===this)closeTx()">
+  <div class="sheet">
+    <div class="hdl"></div><div class="stl">Nuevo movimiento</div>
+    <div class="sbody">
+      <div class="fg"><label class="fl">Tipo</label><div class="tr"><button class="tb" id="t-gas" onclick="setTipo('gas')">Gasto</button><button class="tb" id="t-ing" onclick="setTipo('ing')">Ingreso</button></div></div>
+      <div class="fg"><label class="fl">Monto</label><div class="aw"><span class="ap">$</span><input type="number" class="fi amt" id="iM" placeholder="0" inputmode="decimal"></div></div>
+      <div class="fg"><label class="fl">Descripción</label><input type="text" class="fi" id="iD" placeholder="Ej: Supermercado, Netflix..."></div>
+      <div class="fg"><label class="fl">Categoría</label>
+        <select class="fs" id="iC">
+          <option value="">— Seleccioná —</option>
+          <optgroup label="Gastos"><option>Alimentación</option><option>Supermercado</option><option>Restaurantes</option><option>Transporte</option><option>Combustible</option><option>Salud</option><option>Farmacia</option><option>Servicios</option><option>Internet/Celular</option><option>Luz/Gas/Agua</option><option>Entretenimiento</option><option>Streaming</option><option>Ropa y Calzado</option><option>Tecnología</option><option>Educación</option><option>Mascotas</option><option>Viajes</option><option>Otros gastos</option></optgroup>
+          <optgroup label="Ingresos"><option>Sueldo</option><option>Freelance</option><option>Inversiones</option><option>Ventas</option><option>Reintegros</option><option>Otros ingresos</option></optgroup>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Tipo de pago</label><select class="fs" id="iPago" onchange="onPago()"><option>Efectivo</option><option>Débito</option><option>Crédito</option><option>Transferencia</option><option>Billetera Digital</option></select></div>
+      <div class="fg hidden" id="tarGrp"><label class="fl">Tarjeta</label><select class="fs" id="iTarj"></select></div>
+      <div class="fg"><label class="fl">Responsable</label><div class="tr" id="respTr"></div></div>
+      <div class="hidden" id="cuotaSec">
+        <div class="fg"><label class="fl">¿En cuotas?</label><div class="tr"><button class="tb" id="cqSi" onclick="setCuota(true)">Sí</button><button class="tb" id="cqNo" onclick="setCuota(false)">No</button></div></div>
+        <div class="fg hidden" id="cuotaInp"><div class="cqrow"><div><label class="fl">Cuota N°</label><input type="number" class="fi" id="iCN" placeholder="1" min="1" max="48" inputmode="numeric"></div><div><label class="fl">Total</label><input type="number" class="fi" id="iCT" placeholder="12" min="1" max="48" inputmode="numeric"></div></div></div>
+      </div>
+    </div>
+    <div class="sfoot"><button class="btn-p" id="saveBtn" onclick="guardarTx()"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l5 5L20 7"/></svg> Guardar</button></div>
+  </div>
+</div>
+
+<!-- MODAL META -->
+<div class="ov" id="modalMeta" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="sheet">
+    <div class="hdl"></div><div class="stl">Nueva meta de ahorro</div>
+    <div class="sbody">
+      <div class="fg"><label class="fl">Nombre</label><input type="text" class="fi" id="metaNom" placeholder="Ej: Zapatillas, Viaje a Bariloche..."></div>
+      <div class="fg"><label class="fl">Monto objetivo ($)</label><div class="aw"><span class="ap">$</span><input type="number" class="fi amt" id="metaObj" placeholder="0" inputmode="decimal"></div></div>
+      <div class="fg"><label class="fl">Ahorro actual ($)</label><div class="aw"><span class="ap">$</span><input type="number" class="fi amt" id="metaAct" placeholder="0" inputmode="decimal"></div></div>
+      <div class="fg"><label class="fl">Emoji</label><input type="text" class="fi" id="metaEmoji" placeholder="🎯" maxlength="2"></div>
+    </div>
+    <div class="sfoot"><button class="btn-p" onclick="guardarMeta()">Guardar meta</button></div>
+  </div>
+</div>
+
+<!-- MODAL PRESUPUESTO -->
+<div class="ov" id="modalPres" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="sheet">
+    <div class="hdl"></div><div class="stl">Presupuesto de categoría</div>
+    <div class="sbody">
+      <div class="fg"><label class="fl">Categoría</label>
+        <select class="fs" id="pressCat">
+          <option>Supermercado</option><option>Alimentación</option><option>Restaurantes</option><option>Transporte</option><option>Combustible</option><option>Salud</option><option>Farmacia</option><option>Servicios</option><option>Internet/Celular</option><option>Luz/Gas/Agua</option><option>Entretenimiento</option><option>Streaming</option><option>Ropa y Calzado</option><option>Tecnología</option><option>Educación</option><option>Mascotas</option><option>Viajes</option><option>Otros gastos</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Límite mensual ($)</label><div class="aw"><span class="ap">$</span><input type="number" class="fi amt" id="pressLim" placeholder="0" inputmode="decimal"></div></div>
+    </div>
+    <div class="sfoot"><button class="btn-p" onclick="guardarPres()">Guardar presupuesto</button></div>
+  </div>
+</div>
+
+<!-- MODAL RESPONSABLE -->
+<div class="ov" id="modalResp" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="sheet">
+    <div class="hdl"></div><div class="stl">Nuevo responsable</div>
+    <div class="sbody">
+      <div class="fg"><label class="fl">Nombre</label><input type="text" class="fi" id="rNom" placeholder="Ej: Empresa, Mamá..."></div>
+      <div class="fg"><label class="fl">Color</label><div class="tr" id="rColTr"><button class="tb" onclick="setRC('pu',this)">Violeta</button><button class="tb" onclick="setRC('am',this)">Naranja</button><button class="tb" onclick="setRC('bl',this)">Azul</button><button class="tb" onclick="setRC('pi',this)">Rosa</button><button class="tb" onclick="setRC('cy',this)">Teal</button></div></div>
+      <div class="fg"><label class="fl">Emoji</label><input type="text" class="fi" id="rEmoji" placeholder="👤" maxlength="2"></div>
+    </div>
+    <div class="sfoot"><button class="btn-p" onclick="guardarResp()">Guardar responsable</button></div>
+  </div>
+</div>
+
+<!-- MODAL TARJETA -->
+<div class="ov" id="modalTar" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="sheet">
+    <div class="hdl"></div><div class="stl">Nueva tarjeta</div>
+    <div class="sbody">
+      <div class="fg"><label class="fl">Nombre</label><input type="text" class="fi" id="tNom" placeholder="Ej: Visa HSBC"></div>
+      <div class="fg"><label class="fl">ID (sin espacios)</label><input type="text" class="fi" id="tId" placeholder="VISA_HSBC"></div>
+      <div class="fg"><label class="fl">Límite de crédito ($)</label><div class="aw"><span class="ap">$</span><input type="number" class="fi amt" id="tLimite" placeholder="0" inputmode="decimal"></div></div>
+      <div class="fg"><label class="fl">Vencimiento</label><select class="fs" id="tVT" onchange="toggleVenc()"><option value="variable">Variable (cambia cada mes)</option><option value="fijo">Fijo (mismo día siempre)</option></select></div>
+      <div class="fg hidden" id="tVDG"><label class="fl">Día de vencimiento</label><input type="number" class="fi" id="tVD" placeholder="10" min="1" max="31" inputmode="numeric"></div>
+    </div>
+    <div class="sfoot"><button class="btn-p" onclick="guardarTar()">Guardar tarjeta</button></div>
+  </div>
+</div>
+
+<!-- MODAL URL -->
+<div class="ov" id="modalUrl" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="sheet">
+    <div class="hdl"></div><div class="stl">URL Web App</div>
+    <div class="sbody">
+      <div class="fg"><label class="fl">URL de Apps Script</label><input type="url" class="fi" id="urlInp" placeholder="https://script.google.com/macros/s/..."></div>
+      <p style="font-size:12px;color:var(--t3);line-height:1.6;margin-top:-4px">Extensiones → Apps Script → Implementar → Gestionar implementaciones.</p>
+    </div>
+    <div class="sfoot"><button class="btn-p" onclick="guardarUrl()">Guardar</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
