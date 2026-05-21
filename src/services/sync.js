@@ -64,9 +64,23 @@ export async function sendTx(tx) {
 function parseRow(r) {
   const monto = parseFloat(String(r.Monto || r.monto || '0').replace(',', '.'));
   if (!monto || monto <= 0) return null;
+  // Google Sheets returns dates as ISO strings — convert back to DD/MM/YYYY
+  const rawFecha = String(r.Fecha || r.fecha || '');
+  let fecha = rawFecha;
+  if (rawFecha.includes('T')) {
+    const d = new Date(rawFecha);
+    if (!isNaN(d)) {
+      fecha = `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
+    }
+  }
+
+  // Sheets returns booleans for TRUE/FALSE strings
+  const esCuota = r.EsCuota === 'TRUE' || r.EsCuota === true ||
+                  r.esCuota === 'TRUE' || r.esCuota === true;
+
   return {
     id:          r.ID          || r.id          || '',
-    fecha:       r.Fecha       || r.fecha       || '',
+    fecha,
     tipo:        r.Tipo        || r.tipo        || 'Gasto',
     categoria:   r.Categoria   || r.categoria   || 'Otros gastos',
     descripcion: r.Descripcion || r.descripcion || '',
@@ -76,9 +90,9 @@ function parseRow(r) {
     tarjeta:     r.Tarjeta     || r.tarjeta     || 'N/A',
     responsable: r.Responsable || r.responsable || 'yo',
     comprador:   r.Comprador   || r.comprador   || 'Yo',
-    esCuota:     r.EsCuota === 'TRUE' || r.esCuota === 'TRUE',
-    cuotaActual: r.CuotaActual || r.cuotaActual || '',
-    cuotaTotal:  r.CuotaTotal  || r.cuotaTotal  || '',
+    esCuota,
+    cuotaActual: String(r.CuotaActual || r.cuotaActual || ''),
+    cuotaTotal:  String(r.CuotaTotal  || r.cuotaTotal  || ''),
   };
 }
 
