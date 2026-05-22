@@ -26,6 +26,17 @@ export const ICOS = {
   'Pago Tarjeta':   '💳',
 };
 
+export const GASTO_CATS = [
+  'Alimentación','Supermercado','Restaurantes','Transporte','Combustible',
+  'Salud','Farmacia','Servicios','Internet/Celular','Luz/Gas/Agua',
+  'Entretenimiento','Streaming','Ropa y Calzado','Tecnología','Educación',
+  'Mascotas','Viajes','Pago Tarjeta','Otros gastos',
+];
+
+export const INGRESO_CATS = [
+  'Sueldo','Freelance','Inversiones','Ventas','Reintegros','Otros ingresos',
+];
+
 export const NECESIDADES = [
   'Supermercado', 'Alimentación', 'Salud', 'Farmacia',
   'Servicios', 'Internet/Celular', 'Luz/Gas/Agua',

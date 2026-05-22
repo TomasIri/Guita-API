@@ -7,7 +7,7 @@ import { toast } from '../utils/toast.js';
 import { escapeHTML } from '../utils/sanitize.js';
 import { fmt, fmtMoneda } from '../utils/money.js';
 import { sendTx } from './sync.js';
-import { ICOS } from '../constants.js';
+import { ICOS, GASTO_CATS, INGRESO_CATS } from '../constants.js';
 
 // ── Module state ──────────────────────────────────────────────────────────────
 
@@ -122,24 +122,14 @@ function parsearPDF(txt, tarId) {
         if (codBanco) break;
       }
 
-      const codigoHash  = generarCodigo(tarId, fecha, montoFinal, desc);
-      const codigoFinal = codBanco ? `${tarId}|${codBanco}` : codigoHash;
-      if (vistos.has(codigoFinal)) break;
-      vistos.add(codigoFinal);
-
-      const check = verificarDuplicado(codigoFinal, montoFinal);
-
-      // Parse installment info — search in matched line and adjacent lines.
+      // ── Detect installment info FIRST (before computing codigoFinal) ──────
+      // This is critical: the unique code for each cuota must include the
+      // installment number so that cuota 2/12 is not flagged as duplicate of 1/12.
       let esCuota = false, ca = '', ct = '';
-      let cuotaMatch = desc.match(cuotaRE);
-      if (!cuotaMatch) {
-        for (let k = Math.max(0, i - 1); k <= Math.min(lineas.length - 1, i + 1); k++) {
-          if (k === i) continue;
-          cuotaMatch = lineas[k].match(cuotaRE);
-          if (cuotaMatch) break;
-        }
-      }
-      if (cuotaMatch) {
+      const cuotaSearch = [desc, ...Array.from({length:3},(_,k)=>lineas[i-1+k]).filter(Boolean)];
+      for (const linea of cuotaSearch) {
+        const cuotaMatch = linea.match(cuotaRE);
+        if (!cuotaMatch) continue;
         const parsedCa = parseInt(cuotaMatch[1], 10);
         const parsedCt = parseInt(cuotaMatch[2], 10);
         if (parsedCa > 0 && parsedCt > 0 && parsedCa <= parsedCt) {
@@ -147,8 +137,23 @@ function parsearPDF(txt, tarId) {
           ca      = parsedCa;
           ct      = parsedCt;
           desc    = desc.replace(cuotaRE, '').replace(/\s+/g, ' ').trim();
+          break;
         }
       }
+
+      // ── Compute codigoFinal with cuota awareness ──────────────────────────
+      // codBanco is the bank-assigned unique code per purchase.
+      // For installments: append |cN so each cuota gets its own unique key.
+      // For one-time charges: use codBanco alone (same purchase = same code = duplicate).
+      const codigoHash  = generarCodigo(tarId, fecha, montoFinal, desc);
+      const codigoFinal = codBanco
+        ? (esCuota ? `${tarId}|${codBanco}|c${ca}` : `${tarId}|${codBanco}`)
+        : codigoHash;
+
+      if (vistos.has(codigoFinal)) break;
+      vistos.add(codigoFinal);
+
+      const check = verificarDuplicado(codigoFinal, montoFinal);
 
       movs.push({
         fecha, desc: desc.substring(0, 55), monto: montoFinal,
@@ -191,13 +196,8 @@ function mostrarPreview(movs) {
 
   document.getElementById('prevCnt').textContent = movs.length + ' movimientos detectados';
 
-  const CATS = [
-    'Alimentación','Supermercado','Restaurantes','Transporte','Combustible',
-    'Salud','Farmacia','Servicios','Internet/Celular','Luz/Gas/Agua',
-    'Entretenimiento','Streaming','Ropa y Calzado','Tecnología','Educación',
-    'Mascotas','Viajes','Otros gastos','Sueldo','Freelance',
-    'Inversiones','Ventas','Reintegros','Otros ingresos',
-  ];
+  const customCats = (ST.cats || []).map(c => c.nombre);
+  const CATS = [...GASTO_CATS, ...customCats, ...INGRESO_CATS];
 
   document.getElementById('prevBody').innerHTML = movs.map((m, i) => {
     const checked    = m.estado !== 'duplicado';

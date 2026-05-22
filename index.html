@@ -419,6 +419,9 @@ input[type=number]{-moz-appearance:textfield}
       <div class="slbl" style="margin-top:4px">Tarjetas</div>
       <div class="card" id="tarCfg"></div>
       <button class="btn-a" onclick="abrirModalTar()">+ Agregar tarjeta</button>
+      <div class="slbl" style="margin-top:4px">Categorías personalizadas</div>
+      <div class="card" id="catCfg"></div>
+      <button class="btn-a" onclick="abrirModalCat()">+ Nueva categoría</button>
       <div class="slbl" style="margin-top:4px">Conexión</div>
       <div class="card">
         <div class="sitem" onclick="abrirModalUrl()"><div><div class="silabel">URL Web App</div><div class="sisub" id="urlSt">Sin configurar</div></div><span style="color:var(--t3)">›</span></div>
@@ -463,8 +466,6 @@ input[type=number]{-moz-appearance:textfield}
       <div class="fg"><label class="fl">Categoría</label>
         <select class="fs" id="iC">
           <option value="">— Seleccioná —</option>
-          <optgroup label="Gastos"><option>Alimentación</option><option>Supermercado</option><option>Restaurantes</option><option>Transporte</option><option>Combustible</option><option>Salud</option><option>Farmacia</option><option>Servicios</option><option>Internet/Celular</option><option>Luz/Gas/Agua</option><option>Entretenimiento</option><option>Streaming</option><option>Ropa y Calzado</option><option>Tecnología</option><option>Educación</option><option>Mascotas</option><option>Viajes</option><option>Pago Tarjeta</option><option>Otros gastos</option></optgroup>
-          <optgroup label="Ingresos"><option>Sueldo</option><option>Freelance</option><option>Inversiones</option><option>Ventas</option><option>Reintegros</option><option>Otros ingresos</option></optgroup>
         </select>
       </div>
       <div class="fg"><label class="fl">Tipo de pago</label><select class="fs" id="iPago" onchange="onPago()"><option>Efectivo</option><option>Débito</option><option>Crédito</option><option>Transferencia</option><option>Billetera Digital</option></select></div>
@@ -500,7 +501,7 @@ input[type=number]{-moz-appearance:textfield}
     <div class="sbody">
       <div class="fg"><label class="fl">Categoría</label>
         <select class="fs" id="pressCat">
-          <option>Supermercado</option><option>Alimentación</option><option>Restaurantes</option><option>Transporte</option><option>Combustible</option><option>Salud</option><option>Farmacia</option><option>Servicios</option><option>Internet/Celular</option><option>Luz/Gas/Agua</option><option>Entretenimiento</option><option>Streaming</option><option>Ropa y Calzado</option><option>Tecnología</option><option>Educación</option><option>Mascotas</option><option>Viajes</option><option>Otros gastos</option>
+          <option value="">— Seleccioná —</option>
         </select>
       </div>
       <div class="fg"><label class="fl">Límite mensual ($)</label><div class="aw"><span class="ap">$</span><input type="number" class="fi amt" id="pressLim" placeholder="0" inputmode="decimal"></div></div>
@@ -534,6 +535,19 @@ input[type=number]{-moz-appearance:textfield}
       <div class="fg hidden" id="tVDG"><label class="fl">Día de vencimiento</label><input type="number" class="fi" id="tVD" placeholder="10" min="1" max="31" inputmode="numeric"></div>
     </div>
     <div class="sfoot"><button class="btn-p" onclick="guardarTar()">Guardar tarjeta</button></div>
+  </div>
+</div>
+
+<!-- MODAL CATEGORÍA -->
+<div class="ov" id="modalCat" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="sheet">
+    <div class="hdl"></div><div class="stl">Nueva categoría</div>
+    <div class="sbody">
+      <div class="fg"><label class="fl">Nombre</label><input type="text" class="fi" id="catNom" placeholder="Ej: Delivery, Hogar..."></div>
+      <div class="fg"><label class="fl">Tipo</label><select class="fs" id="catTipo"><option value="gasto">Gasto</option><option value="ingreso">Ingreso</option></select></div>
+      <div class="fg"><label class="fl">Emoji</label><input type="text" class="fi" id="catEmoji" placeholder="📂" maxlength="2"></div>
+    </div>
+    <div class="sfoot"><button class="btn-p" onclick="guardarCat()">Guardar categoría</button></div>
   </div>
 </div>
 

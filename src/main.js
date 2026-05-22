@@ -5,11 +5,31 @@ import { escapeHTML, csvField } from './utils/sanitize.js';
 import { toast } from './utils/toast.js';
 import { sendTx, doSync, fullSync, abrirModalUrl, guardarUrl } from './services/sync.js';
 import { generateId } from './utils/id.js';
-import { ICOS, TIPS, NECESIDADES, DESEOS } from './constants.js';
+import { ICOS, TIPS, NECESIDADES, DESEOS, GASTO_CATS, INGRESO_CATS } from './constants.js';
 import {
   onDragOver, onDragLeave, onDrop, onFileSelect,
   toggleAll, importarPDF, resetPDF,
 } from './services/pdf.js';
+
+// ── Categories ────────────────────────────────────────────────────────────────
+
+function getCats() {
+  const custom = ST.cats || [];
+  return {
+    gastos:   [...GASTO_CATS,   ...custom.filter(c => c.tipo !== 'ingreso').map(c => c.nombre)],
+    ingresos: [...INGRESO_CATS, ...custom.filter(c => c.tipo === 'ingreso').map(c => c.nombre)],
+  };
+}
+
+function poblarCatSelect(elId, valorActual) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const { gastos, ingresos } = getCats();
+  el.innerHTML =
+    `<option value="">— Seleccioná —</option>` +
+    `<optgroup label="Gastos">${gastos.map(c => `<option${c === valorActual ? ' selected' : ''}>${escapeHTML(c)}</option>`).join('')}</optgroup>` +
+    `<optgroup label="Ingresos">${ingresos.map(c => `<option${c === valorActual ? ' selected' : ''}>${escapeHTML(c)}</option>`).join('')}</optgroup>`;
+}
 
 // ── Navigation state ──────────────────────────────────────────────────────────
 
@@ -581,6 +601,12 @@ function renderConfig() {
   document.getElementById('tarCfg').innerHTML = ST.tars.map((t, i) =>
     `<div class="sitem"><div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:8px;background:var(--pub);display:flex;align-items:center;justify-content:center;font-size:14px">💳</div><div><div class="silabel">${escapeHTML(t.nombre)}</div><div class="sisub">${t.vt === 'fijo' ? 'Día ' + t.vd : 'Variable'} · ${t.id}${t.limite ? ' · lim ' + fmt(t.limite) : ''}</div></div></div><button onclick="borrarTar(${i})" style="background:none;border:none;color:var(--re);cursor:pointer;font-size:16px;padding:4px">✕</button></div>`
   ).join('');
+
+  document.getElementById('catCfg').innerHTML = (ST.cats || []).length
+    ? (ST.cats).map((c, i) =>
+        `<div class="sitem"><div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:8px;background:var(--pub2);display:flex;align-items:center;justify-content:center;font-size:16px">${escapeHTML(c.emoji || '📂')}</div><div><div class="silabel">${escapeHTML(c.nombre)}</div><div class="sisub">${c.tipo === 'ingreso' ? 'Ingreso' : 'Gasto'}</div></div></div><button onclick="borrarCat(${i})" style="background:none;border:none;color:var(--re);cursor:pointer;font-size:16px;padding:4px">✕</button></div>`
+      ).join('')
+    : '<div style="padding:13px 14px;font-size:13px;color:var(--t3)">Sin categorías personalizadas</div>';
 }
 
 function updateStatusUI() {
@@ -614,6 +640,7 @@ let txT = 'gas', txR = 'yo', txCQ = false, txMoneda = 'ARS';
 function openModalTx() {
   poblarRespTr();
   poblarTarSelect();
+  poblarCatSelect('iC');
   document.getElementById('modalTx').classList.add('open');
   document.getElementById('iM').focus();
 }
@@ -794,6 +821,7 @@ function borrarMeta(i) {
 
 function abrirModalPres() {
   document.getElementById('pressLim').value = '';
+  poblarCatSelect('pressCat');
   document.getElementById('modalPres').classList.add('open');
 }
 
@@ -902,6 +930,38 @@ function borrarTar(i) {
   toast('Eliminada');
 }
 
+// ── Custom categories CRUD ────────────────────────────────────────────────────
+
+function abrirModalCat() {
+  document.getElementById('catNom').value   = '';
+  document.getElementById('catEmoji').value = '';
+  document.getElementById('catTipo').value  = 'gasto';
+  document.getElementById('modalCat').classList.add('open');
+}
+
+function guardarCat() {
+  const n = document.getElementById('catNom').value.trim();
+  if (!n) { toast('Ingresá un nombre', 'err'); return; }
+  const { gastos, ingresos } = getCats();
+  if ([...gastos, ...ingresos].includes(n)) { toast('Ya existe', 'warn'); return; }
+  const e = document.getElementById('catEmoji').value.trim() || '📂';
+  const t = document.getElementById('catTipo').value;
+  if (!ST.cats) ST.cats = [];
+  ST.cats.push({ nombre: n, emoji: e, tipo: t });
+  save();
+  renderConfig();
+  document.getElementById('modalCat').classList.remove('open');
+  toast(n + ' creada ✓', 'ok');
+}
+
+function borrarCat(i) {
+  if (!confirm('¿Eliminar categoría?')) return;
+  ST.cats.splice(i, 1);
+  save();
+  renderConfig();
+  toast('Eliminada');
+}
+
 // ── CSV & data ────────────────────────────────────────────────────────────────
 
 function exportCSV() {
@@ -935,9 +995,9 @@ async function borrarDatos() {
 
   // Clear local storage
   ['fp_txs','fp_pend','fp_codes','fp_metas','fp_pres','fp_racha','fp_ultReg',
-   'fp_resumenes','fp_pagostar','fp_version'].forEach(k => localStorage.removeItem(k));
+   'fp_resumenes','fp_pagostar','fp_cats','fp_version'].forEach(k => localStorage.removeItem(k));
   ST.txs = []; ST.pend = []; ST.codes = {}; ST.metas = []; ST.pres = {};
-  ST.resumenes = {}; ST.pagosTar = {};
+  ST.resumenes = {}; ST.pagosTar = {}; ST.cats = [];
   ST.racha = 0; ST.ultReg = '';
   save();
   renderAll();
@@ -978,6 +1038,7 @@ Object.assign(window, {
   abrirModalPres, guardarPres, borrarPres,
   abrirModalResp, setRC, guardarResp, borrarResp,
   abrirModalTar, toggleVenc, guardarTar, borrarTar,
+  abrirModalCat, guardarCat, borrarCat,
   abrirModalUrl, guardarUrl, doSync,
   setF, setFR,
   exportCSV, borrarDatos, marcarResumenPagado,

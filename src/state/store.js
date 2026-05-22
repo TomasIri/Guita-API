@@ -1,6 +1,6 @@
 import { isoToday, isoYesterday } from '../utils/date.js';
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 const DEFAULT_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyGoe0rdQk2qMKOtT7WP3ZX49b_78jJUOhK5Z3zYLOT6_SGZdI3c-BLxd59isKfPTob/exec';
 
@@ -40,6 +40,16 @@ export function migrateV1(data) {
  */
 export function migrateV2(data) {
   if (!data.resumenes) data.resumenes = {};
+  data.version = 3;
+  return data;
+}
+
+/**
+ * v3 → v4:
+ * - Add `cats` field: user-defined custom categories.
+ */
+export function migrateV3(data) {
+  if (!data.cats) data.cats = [];
   data.version = SCHEMA_VERSION;
   return data;
 }
@@ -61,11 +71,13 @@ function loadFromStorage() {
       codes:    JSON.parse(localStorage.getItem('fp_codes')    || '{}'),
       resumenes: JSON.parse(localStorage.getItem('fp_resumenes') || '{}'),
       pagosTar:  JSON.parse(localStorage.getItem('fp_pagostar')  || '{}'),
+      cats:      JSON.parse(localStorage.getItem('fp_cats')      || '[]'),
       racha:     parseInt(localStorage.getItem('fp_racha')   || '0', 10),
       ultReg:   localStorage.getItem('fp_ultReg') || '',
     };
     if (version < 2) migrateV1(data);
     if (version < 3) migrateV2(data);
+    if (version < 4) migrateV3(data);
     return data;
   } catch {
     return emptyState();
@@ -78,7 +90,7 @@ function emptyState() {
     txs: [], pend: [], url: '',
     resp: structuredClone(DEFAULT_RESP),
     tars: structuredClone(DEFAULT_TARS),
-    metas: [], pres: {}, codes: {}, resumenes: {}, pagosTar: {},
+    metas: [], pres: {}, codes: {}, resumenes: {}, pagosTar: {}, cats: [],
     racha: 0, ultReg: '',
   };
 }
@@ -107,6 +119,7 @@ export function save() {
     localStorage.setItem('fp_ultReg',   ST.ultReg);
     localStorage.setItem('fp_resumenes', JSON.stringify(ST.resumenes));
     localStorage.setItem('fp_pagostar',  JSON.stringify(ST.pagosTar));
+    localStorage.setItem('fp_cats',      JSON.stringify(ST.cats || []));
   } catch (err) {
     console.error('[Guita] Error al guardar en localStorage:', err);
   } finally {
