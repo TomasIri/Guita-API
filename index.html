@@ -310,6 +310,7 @@ input[type=number]{-moz-appearance:textfield}
           </div>
         </div>
       </div>
+      <div id="kUsdNote" style="display:none;font-size:11px;color:var(--bl);text-align:center;padding:2px 4px;line-height:1.5"></div>
 
       <div class="card"><div class="ch"><span class="ct">Responsables</span><span class="ca" onclick="goNav(4)">Stats →</span></div><div id="homeResp"></div></div>
       <div class="card"><div class="ch"><span class="ct">Últimos movimientos</span><span class="ca" onclick="goNav(1)">Ver todo →</span></div><div id="lastTx"></div></div>
@@ -431,7 +432,7 @@ input[type=number]{-moz-appearance:textfield}
       </div>
       <div class="slbl" style="margin-top:4px">Sistema</div>
       <div class="card">
-        <div class="sitem"><div><div class="silabel">Versión</div><div class="sisub">Guita · v2.3</div></div><span style="font-size:11px;padding:3px 8px;background:var(--grb);color:var(--gr);border-radius:5px;font-weight:600">OK</span></div>
+        <div class="sitem"><div><div class="silabel">Versión</div><div class="sisub">Guita · v2.9</div></div><span style="font-size:11px;padding:3px 8px;background:var(--grb);color:var(--gr);border-radius:5px;font-weight:600">OK</span></div>
         <div class="sitem" onclick="borrarDatos()"><div><div class="silabel" style="color:var(--re)">Borrar todos los datos</div><div class="sisub">Borra este dispositivo Y el Google Sheet</div></div><span style="color:var(--re)">›</span></div>
       </div>
     </div>
@@ -456,7 +457,8 @@ input[type=number]{-moz-appearance:textfield}
     <div class="hdl"></div><div class="stl">Nuevo movimiento</div>
     <div class="sbody">
       <div class="fg"><label class="fl">Tipo</label><div class="tr"><button class="tb" id="t-gas" onclick="setTipo('gas')">Gasto</button><button class="tb" id="t-ing" onclick="setTipo('ing')">Ingreso</button></div></div>
-      <div class="fg"><label class="fl">Monto</label><div class="aw"><span class="ap">$</span><input type="number" class="fi amt" id="iM" placeholder="0" inputmode="decimal"></div></div>
+      <div class="fg"><label class="fl">Monto</label><div class="aw"><span class="ap" id="monedaPrefix">$</span><input type="number" class="fi amt" id="iM" placeholder="0" inputmode="decimal"></div></div>
+      <div class="fg"><label class="fl">Moneda</label><div class="tr" id="monedaTr"><button class="tb sel-pu" id="m-ars" onclick="setMoneda('ARS',this)">$ ARS</button><button class="tb" id="m-usd" onclick="setMoneda('USD',this)">💵 USD</button></div></div>
       <div class="fg"><label class="fl">Descripción</label><input type="text" class="fi" id="iD" placeholder="Ej: Supermercado, Netflix..."></div>
       <div class="fg"><label class="fl">Categoría</label>
         <select class="fs" id="iC">

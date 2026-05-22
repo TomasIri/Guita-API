@@ -98,10 +98,13 @@ function renderHome() {
   const txM = mesLocal(curMes);
   const txP = mesLocal(new Date(curMes.getFullYear(), curMes.getMonth() - 1, 1));
 
-  const ing  = txM.filter(t => t.tipo === 'Ingreso').reduce((s, t) => s + t.monto, 0);
-  const gas  = txM.filter(t => t.tipo === 'Gasto').reduce((s, t) => s + t.monto, 0);
-  const ingP = txP.filter(t => t.tipo === 'Ingreso').reduce((s, t) => s + t.monto, 0);
-  const gasP = txP.filter(t => t.tipo === 'Gasto').reduce((s, t) => s + t.monto, 0);
+  const arsOnly = t => (t.moneda || 'ARS') === 'ARS';
+  const ing    = txM.filter(t => t.tipo === 'Ingreso' && arsOnly(t)).reduce((s, t) => s + t.monto, 0);
+  const gas    = txM.filter(t => t.tipo === 'Gasto'   && arsOnly(t)).reduce((s, t) => s + t.monto, 0);
+  const ingP   = txP.filter(t => t.tipo === 'Ingreso' && arsOnly(t)).reduce((s, t) => s + t.monto, 0);
+  const gasP   = txP.filter(t => t.tipo === 'Gasto'   && arsOnly(t)).reduce((s, t) => s + t.monto, 0);
+  const ingUSD = txM.filter(t => t.tipo === 'Ingreso' && t.moneda === 'USD').reduce((s, t) => s + t.monto, 0);
+  const gasUSD = txM.filter(t => t.tipo === 'Gasto'   && t.moneda === 'USD').reduce((s, t) => s + t.monto, 0);
   const bal  = ing - gas;
   const aho  = pct(bal, ing);
   const meta = 25;
@@ -116,6 +119,19 @@ function renderHome() {
   if (gasP > 0) { const d = pct(gas - gasP, gasP); document.getElementById('kGsub').textContent = (d > 0 ? '↑+' : '↓') + d + '% vs mes ant.'; }
   if (ingP || gasP) { const dd = bal - (ingP - gasP); document.getElementById('kBsub').textContent = (dd >= 0 ? '↑ +' : '↓ ') + fmt(Math.abs(dd)) + ' vs mes ant.'; }
 
+  const usdNote = document.getElementById('kUsdNote');
+  if (usdNote) {
+    if (gasUSD > 0 || ingUSD > 0) {
+      const parts = [];
+      if (gasUSD > 0) parts.push(`gastos ${fmtMoneda(gasUSD, 'USD')}`);
+      if (ingUSD > 0) parts.push(`ingresos ${fmtMoneda(ingUSD, 'USD')}`);
+      usdNote.style.display = '';
+      usdNote.textContent = `💵 En USD (fuera del balance ARS): ${parts.join(' · ')}`;
+    } else {
+      usdNote.style.display = 'none';
+    }
+  }
+
   const ahoPct = Math.min(aho / meta * 100, 100);
   const pf = document.getElementById('kApf');
   pf.style.width = ahoPct + '%';
@@ -124,7 +140,7 @@ function renderHome() {
   renderMonedita(aho, bal, gas, ing);
 
   const gR = ST.resp
-    .map(r => ({ ...r, tot: txM.filter(t => t.tipo === 'Gasto' && t.responsable === r.id).reduce((s, t) => s + t.monto, 0) }))
+    .map(r => ({ ...r, tot: txM.filter(t => t.tipo === 'Gasto' && t.responsable === r.id && arsOnly(t)).reduce((s, t) => s + t.monto, 0) }))
     .filter(r => r.tot > 0)
     .sort((a, b) => b.tot - a.tot);
 
@@ -154,7 +170,7 @@ function mkTx(t) {
   const cb   = t.esCuota ? `<span class="bdg" style="background:var(--pub);color:var(--pu2)">${t.cuotaActual}/${t.cuotaTotal}</span>` : '';
   const sign        = t.tipo === 'Ingreso' ? '+' : '-';
   const montoDisplay = t.moneda === 'USD'
-    ? `<span style="color:var(--bl)">USD ${(t.monto ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 2 })}</span>`
+    ? `<span style="color:var(--bl)">${sign}${fmtMoneda(t.monto, 'USD')}</span>`
     : `${sign}${fmt(t.monto)}`;
   return `<div class="tx"><div class="ti" style="background:${bg}">${ico}</div><div class="tin"><div class="td">${escapeHTML(t.descripcion)}${rb}${cb}</div><div class="tm">${escapeHTML(t.fecha)} · ${escapeHTML(t.categoria)}</div></div><div class="ta ${t.tipo === 'Ingreso' ? 'g' : 'r'}">${montoDisplay}</div></div>`;
 }
@@ -436,7 +452,7 @@ function renderMetas() {
   }
 
   const txM    = mesLocal(curMes);
-  const gastos = txM.filter(t => t.tipo === 'Gasto');
+  const gastos = txM.filter(t => t.tipo === 'Gasto' && (t.moneda || 'ARS') === 'ARS');
   const presEl = document.getElementById('presCard');
   const cats   = Object.keys(ST.pres);
   if (!cats.length) {
@@ -464,7 +480,7 @@ function renderMetas() {
     }).join('');
   }
 
-  const totalIng = txM.filter(t => t.tipo === 'Ingreso').reduce((s, t) => s + t.monto, 0);
+  const totalIng = txM.filter(t => t.tipo === 'Ingreso' && (t.moneda || 'ARS') === 'ARS').reduce((s, t) => s + t.monto, 0);
   const totalGas = gastos.reduce((s, t) => s + t.monto, 0);
   const gas50    = gastos.filter(t => NECESIDADES.includes(t.categoria)).reduce((s, t) => s + t.monto, 0);
   const gas30    = gastos.filter(t => DESEOS.includes(t.categoria)).reduce((s, t) => s + t.monto, 0);
@@ -493,9 +509,11 @@ function renderMetas() {
 
 function renderStats() {
   const txM       = mesLocal(curMes);
-  const gastos    = txM.filter(t => t.tipo === 'Gasto');
+  const arsOnly   = t => (t.moneda || 'ARS') === 'ARS';
+  const gastos    = txM.filter(t => t.tipo === 'Gasto' && arsOnly(t));
   const totalGas  = gastos.reduce((s, t) => s + t.monto, 0);
-  const totalIng  = txM.filter(t => t.tipo === 'Ingreso').reduce((s, t) => s + t.monto, 0);
+  const totalIng  = txM.filter(t => t.tipo === 'Ingreso' && arsOnly(t)).reduce((s, t) => s + t.monto, 0);
+  const gasUSD    = txM.filter(t => t.tipo === 'Gasto' && t.moneda === 'USD').reduce((s, t) => s + t.monto, 0);
   const hoy       = new Date();
   const diasHoy   = curMes.getMonth() === hoy.getMonth() && curMes.getFullYear() === hoy.getFullYear()
     ? hoy.getDate()
@@ -591,7 +609,7 @@ async function subirTodosASheets() {
 
 // ── Transaction modal ─────────────────────────────────────────────────────────
 
-let txT = 'gas', txR = 'yo', txCQ = false;
+let txT = 'gas', txR = 'yo', txCQ = false, txMoneda = 'ARS';
 
 function openModalTx() {
   poblarRespTr();
@@ -623,6 +641,14 @@ function setCuota(v) {
   document.getElementById('cqSi').className = 'tb ' + (v ? 'sel-pu' : '');
   document.getElementById('cqNo').className = 'tb ' + (!v ? 'sel-pu' : '');
   document.getElementById('cuotaInp').classList.toggle('hidden', !v);
+}
+
+function setMoneda(m, el) {
+  txMoneda = m;
+  document.querySelectorAll('#monedaTr .tb').forEach(b => b.className = 'tb');
+  el.className = 'tb ' + (m === 'USD' ? 'sel-bl' : 'sel-pu');
+  const pre = document.getElementById('monedaPrefix');
+  if (pre) pre.textContent = m === 'USD' ? 'U$S' : '$';
 }
 
 function setRBtn(id, el) {
@@ -666,7 +692,7 @@ async function guardarTx() {
     categoria:   c,
     descripcion: d,
     monto:       m,
-    moneda:      'ARS',
+    moneda:      txMoneda,
     tipoPago:    document.getElementById('iPago').value,
     tarjeta:     document.getElementById('iPago').value === 'Crédito' ? document.getElementById('iTarj').value : 'N/A',
     responsable: txR,
@@ -714,6 +740,9 @@ function resetTx() {
   document.getElementById('cuotaInp').classList.add('hidden');
   txT = 'gas'; txCQ = false;
   setTipo('gas');
+  txMoneda = 'ARS';
+  const arsBtn = document.getElementById('m-ars');
+  if (arsBtn) setMoneda('ARS', arsBtn);
   txR = 'yo';
   poblarRespTr();
 }
@@ -944,7 +973,7 @@ function init() {
 
 Object.assign(window, {
   goNav, cambiarMes, irAlMes,
-  openModalTx, closeTx, setTipo, onPago, setCuota, setRBtn, guardarTx,
+  openModalTx, closeTx, setTipo, onPago, setCuota, setMoneda, setRBtn, guardarTx,
   abrirModalMeta, guardarMeta, sumarMeta, borrarMeta,
   abrirModalPres, guardarPres, borrarPres,
   abrirModalResp, setRC, guardarResp, borrarResp,
